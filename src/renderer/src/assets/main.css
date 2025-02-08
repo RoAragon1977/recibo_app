@@ -1,0 +1,37 @@
+@import './base.css';
+
+body {
+  display: flex;
+  overflow: hidden;
+  user-select: none;
+  padding: 2em;
+}
+
+.titulo {
+  text-align: center;
+}
+
+.contForm {
+  margin-top: 1em;
+  padding: 1em;
+  border-style: double;
+}
+
+@media (max-width: 720px) {
+  .text {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 620px) {
+  .versions {
+    display: none;
+  }
+}
+
+@media (max-width: 350px) {
+  .tip,
+  .actions {
+    display: none;
+  }
+}
