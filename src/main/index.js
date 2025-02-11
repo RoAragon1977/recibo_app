@@ -27,8 +27,8 @@ function createWindow() {
     return { action: 'deny' }
   })
 
-  // HMR for renderer base on electron-vite cli.
-  // Load the remote URL for development or the local html file for production.
+  // HMR para renderizador basado en la línea de comandos de electron-vite.
+  // Carga la URL remota para desarrollo o el archivo HTML local para producción.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
@@ -36,16 +36,16 @@ function createWindow() {
   }
 }
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
+// Este método se llamará cuando Electron haya finalizado
+// la inicialización y esté listo para crear ventanas del navegador.
+// Algunas API solo se pueden usar después de que se produzca este evento.
 app.whenReady().then(() => {
-  // Set app user model id for windows
+  // Establecer el ID del modelo de usuario de la aplicación para Windows
   electronApp.setAppUserModelId('com.electron')
 
-  // Default open or close DevTools by F12 in development
-  // and ignore CommandOrControl + R in production.
-  // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
+  // Abre o cierra DevTools de forma predeterminada con F12 en desarrollo
+  // e ignora CommandOrControl + R en producción.
+  // Consulta https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
@@ -54,42 +54,64 @@ app.whenReady().then(() => {
   ipcMain.on('ping', () => console.log('pong'))
 
   // Manejar el evento "crear-factura"
-  ipcMain.handle('crear-factura', (event, factura) => {
-    const stmt = db.prepare(`
-      INSERT INTO facturas (proveedor, dni, domicilio, articulo, cantidad, precio_unitario, importe, iva, total)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ipcMain.handle('crear-factura', async (event, factura) => {
+    try {
+      const proveedorStmt = db.prepare(`
+        INSERT INTO Proveedor (proveedor, dni, domicilio)
+        VALUES (?, ?, ?)
+        ON CONFLICT(dni) DO UPDATE SET
+          proveedor = ?,
+          domicilio = ?
       `)
-    const info = stmt.run(
-      factura.proveedor,
-      factura.dni,
-      factura.domicilio,
-      factura.articulo,
-      factura.cantidad,
-      factura.precio_unitario,
-      factura.importe,
-      factura.iva,
-      factura.total
-    )
-    return { id: info.lastInsertRowid }
+      const proveedorInfo = proveedorStmt.run(
+        factura.proveedor,
+        factura.dni,
+        factura.domicilio,
+        factura.proveedor,
+        factura.domicilio
+      )
+
+      const proveedorId =
+        proveedorInfo.lastInsertRowid ||
+        db.prepare('SELECT id FROM Proveedor WHERE dni = ?').get(factura.dni).id
+
+      const compraStmt = db.prepare(`
+        INSERT INTO Compra (proveedor_id, articulo, cantidad, precio_unitario, importe, iva, total)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `)
+      const compraInfo = compraStmt.run(
+        proveedorId,
+        factura.articulo,
+        factura.cantidad,
+        factura.precio_unitario,
+        factura.importe,
+        factura.iva,
+        factura.total
+      )
+      return { id: compraInfo.lastInsertRowid }
+    } catch (error) {
+      console.error('Error occurred in handler for "crear-factura":', error)
+      throw error
+    }
   })
 
   createWindow()
 
   app.on('activate', function () {
-    // On macOS it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
+    // En macOS es común volver a crear una ventana en la aplicación cuando se hace clic en el
+    // ícono del dock y no hay otras ventanas abiertas.
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
+// Salir cuando se cierran todas las ventanas, excepto en macOS. Allí, es común
+// que las aplicaciones y su barra de menú permanezcan activas hasta que el usuario las cierre
+// explícitamente con Cmd + Q.
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
 })
 
-// In this file you can include the rest of your app"s specific main process
-// code. You can also put them in separate files and require them here.
+// En este archivo puedes incluir el resto del código del proceso principal específico de tu aplicación.
+// También puedes colocarlos en archivos separados y solicitarlos aquí.

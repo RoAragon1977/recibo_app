@@ -54,6 +54,7 @@ const Formulario = () => {
       }
     }
   })
+
   const calcularTotales = () => {
     const cantidad = parseFloat(formik.values.cantidad) || 0
     const precioUnitario = parseFloat(formik.values.precio_unitario) || 0
@@ -70,59 +71,87 @@ const Formulario = () => {
     <form onSubmit={formik.handleSubmit}>
       <h2 className="titulo">Formulario de Recibo</h2>
       <div className="contForm">
-        <label>ID</label>
-        <input type="text" value={formik.values.id} readOnly className="input-readonly" />
+        <div className="conten-proveedor">
+          <div className="unidad-input">
+            <label>ID</label>
+            <input type="text" value={formik.values.id} readOnly className="input-readonly" />
+          </div>
 
-        <label>Proveedor</label>
-        <input type="text" name="proveedor" {...formik.getFieldProps('proveedor')} />
-        {formik.touched.proveedor && formik.errors.proveedor && <p>{formik.errors.proveedor}</p>}
+          <div className="unidad-input">
+            <label>Proveedor</label>
+            <input type="text" name="proveedor" {...formik.getFieldProps('proveedor')} />
+            {formik.touched.proveedor && formik.errors.proveedor && (
+              <p>{formik.errors.proveedor}</p>
+            )}
+          </div>
 
-        <label>DNI</label>
-        <input type="text" name="dni" {...formik.getFieldProps('dni')} />
-        {formik.touched.dni && formik.errors.dni && <p>{formik.errors.dni}</p>}
+          <div className="unidad-input">
+            <label>DNI</label>
+            <input type="text" name="dni" {...formik.getFieldProps('dni')} />
+            {formik.touched.dni && formik.errors.dni && <p>{formik.errors.dni}</p>}
+          </div>
 
-        <label>Domicilio</label>
-        <input type="text" name="domicilio" {...formik.getFieldProps('domicilio')} />
-        {formik.touched.domicilio && formik.errors.domicilio && <p>{formik.errors.domicilio}</p>}
+          <div className="unidad-input">
+            <label>Domicilio</label>
+            <input type="text" name="domicilio" {...formik.getFieldProps('domicilio')} />
+            {formik.touched.domicilio && formik.errors.domicilio && (
+              <p>{formik.errors.domicilio}</p>
+            )}
+          </div>
+        </div>
 
-        <label>Artículo</label>
-        <input type="text" name="articulo" {...formik.getFieldProps('articulo')} />
-        {formik.touched.articulo && formik.errors.articulo && <p>{formik.errors.articulo}</p>}
+        <div className="conten-compra">
+          <div className="unidad-input">
+            <label>Artículo</label>
+            <input type="text" name="articulo" {...formik.getFieldProps('articulo')} />
+            {formik.touched.articulo && formik.errors.articulo && <p>{formik.errors.articulo}</p>}
+          </div>
 
-        <label>Cantidad (Kg)</label>
-        <input
-          type="text"
-          name="cantidad"
-          inputMode="decimal"
-          pattern="\d+(\.\d{1,2})?"
-          onChange={(e) => {
-            formik.setFieldValue('cantidad', e.target.value)
-            calcularTotales()
-          }}
-          value={formik.values.cantidad}
-        />
+          <div className="unidad-input">
+            <label>Cantidad (Kg)</label>
+            <input
+              type="text"
+              name="cantidad"
+              inputMode="decimal"
+              pattern="\d+(\.\d{1,2})?"
+              onChange={(e) => {
+                formik.setFieldValue('cantidad', e.target.value)
+                calcularTotales()
+              }}
+              value={formik.values.cantidad}
+            />
+          </div>
 
-        <label>Precio Unitario ($)</label>
-        <input
-          type="text"
-          name="precio_unitario"
-          inputMode="decimal"
-          pattern="\d+(\.\d{1,2})?"
-          onChange={(e) => {
-            formik.setFieldValue('precio_unitario', e.target.value)
-            calcularTotales()
-          }}
-          value={formik.values.precio_unitario}
-        />
+          <div className="unidad-input">
+            <label>Precio Unitario ($)</label>
+            <input
+              type="text"
+              name="precio_unitario"
+              inputMode="decimal"
+              pattern="\d+(\.\d{1,2})?"
+              onChange={(e) => {
+                formik.setFieldValue('precio_unitario', e.target.value)
+                calcularTotales()
+              }}
+              value={formik.values.precio_unitario}
+            />
+          </div>
 
-        <label>Importe</label>
-        <input type="text" value={formik.values.importe} readOnly className="input-readonly" />
+          <div className="unidad-input">
+            <label>Importe</label>
+            <input type="text" value={formik.values.importe} readOnly className="input-readonly" />
+          </div>
 
-        <label>IVA (21%)</label>
-        <input type="text" value={formik.values.iva} readOnly className="input-readonly" />
+          <div className="unidad-input">
+            <label>IVA (21%)</label>
+            <input type="text" value={formik.values.iva} readOnly className="input-readonly" />
+          </div>
 
-        <label>Total</label>
-        <input type="text" value={formik.values.total} readOnly className="input-readonly" />
+          <div className="unidad-input">
+            <label>Total</label>
+            <input type="text" value={formik.values.total} readOnly className="input-readonly" />
+          </div>
+        </div>
 
         <button type="submit">Generar Factura</button>
       </div>

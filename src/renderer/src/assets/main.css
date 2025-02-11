@@ -1,6 +1,6 @@
-@import './base.css';
+/* @import './base.css'; */
 
-body {
+/* body {
   display: flex;
   overflow: hidden;
   user-select: none;
@@ -15,6 +15,116 @@ body {
   margin-top: 1em;
   padding: 1em;
   border-style: double;
+}
+
+@media (max-width: 720px) {
+  .text {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 620px) {
+  .versions {
+    display: none;
+  }
+}
+
+@media (max-width: 350px) {
+  .tip,
+  .actions {
+    display: none;
+  }
+} */
+
+@import './base.css';
+
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+  color: #ffffff;
+  font-family: 'Orbitron', sans-serif;
+  overflow: hidden;
+  user-select: none;
+  padding: 2em;
+}
+
+.titulo {
+  text-align: center;
+  font-size: 2em;
+  margin-bottom: 1em;
+  color: #00ffcc;
+  text-shadow:
+    0 0 10px #00ffcc,
+    0 0 20px #00ffcc,
+    0 0 30px #00ffcc;
+}
+
+.contForm {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2em;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(0, 255, 204, 0.5);
+  border: 1px solid #00ffcc;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 800px;
+}
+
+.conten-proveedor,
+.conten-compra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1em;
+}
+
+.unidad-input {
+  flex: 1 1 calc(50% - 1em);
+  min-width: 200px;
+}
+
+label {
+  display: block;
+  margin-bottom: 0.5em;
+  color: #00ffcc;
+}
+
+input[type='text'] {
+  width: 100%;
+  padding: 0.5em;
+  margin-bottom: 1em;
+  border: none;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  box-shadow: inset 0 0 5px rgba(0, 255, 204, 0.5);
+}
+
+input[type='text']:focus {
+  outline: none;
+  box-shadow:
+    0 0 10px #00ffcc,
+    0 0 20px #00ffcc,
+    0 0 30px #00ffcc;
+}
+
+button[type='submit'] {
+  width: 100%;
+  padding: 0.75em;
+  border: none;
+  border-radius: 5px;
+  background: #00ffcc;
+  color: #0f2027;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+button[type='submit']:hover {
+  background: #00e6b8;
 }
 
 @media (max-width: 720px) {
