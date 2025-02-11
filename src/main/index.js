@@ -2,9 +2,10 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import db from './database'
 
 function createWindow() {
-  // Create the browser window.
+  // crea la ventana principal.
   const mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
@@ -51,6 +52,26 @@ app.whenReady().then(() => {
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
+
+  // Manejar el evento "crear-factura"
+  ipcMain.handle('crear-factura', (event, factura) => {
+    const stmt = db.prepare(`
+      INSERT INTO facturas (proveedor, dni, domicilio, articulo, cantidad, precio_unitario, importe, iva, total)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+    const info = stmt.run(
+      factura.proveedor,
+      factura.dni,
+      factura.domicilio,
+      factura.articulo,
+      factura.cantidad,
+      factura.precio_unitario,
+      factura.importe,
+      factura.iva,
+      factura.total
+    )
+    return { id: info.lastInsertRowid }
+  })
 
   createWindow()
 

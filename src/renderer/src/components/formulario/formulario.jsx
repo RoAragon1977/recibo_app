@@ -1,6 +1,7 @@
 import { useFormik } from 'formik'
 import * as Yup from 'yup'
 import { useState } from 'react'
+const { ipcRenderer } = window.electron
 
 const Formulario = () => {
   const [idCounter, setIdCounter] = useState(1)
@@ -29,26 +30,30 @@ const Formulario = () => {
       cantidad: Yup.number().min(0.01, 'Debe ser mayor a 0').required('Obligatorio'),
       precio_unitario: Yup.number().min(0, 'Debe ser un número positivo').required('Obligatorio')
     }),
-    onSubmit: (values, { resetForm }) => {
-      alert(`Factura generada:\n${JSON.stringify(values, null, 2)}`)
-      setIdCounter((prev) => prev + 1)
-      resetForm({
-        values: {
-          id: idCounter + 1,
-          proveedor: '',
-          dni: '',
-          domicilio: '',
-          articulo: '',
-          cantidad: '',
-          precio_unitario: '',
-          importe: 0.0,
-          iva: 0.0,
-          total: 0.0
-        }
-      })
+    onSubmit: async (values, { resetForm }) => {
+      try {
+        const result = await ipcRenderer.invoke('crear-factura', values)
+        alert(`Factura generada con ID: ${result.id}`)
+        setIdCounter((prev) => prev + 1)
+        resetForm({
+          values: {
+            id: idCounter + 1,
+            proveedor: '',
+            dni: '',
+            domicilio: '',
+            articulo: '',
+            cantidad: '',
+            precio_unitario: '',
+            importe: 0.0,
+            iva: 0.0,
+            total: 0.0
+          }
+        })
+      } catch (error) {
+        console.error('Error al crear la factura:', error)
+      }
     }
   })
-
   const calcularTotales = () => {
     const cantidad = parseFloat(formik.values.cantidad) || 0
     const precioUnitario = parseFloat(formik.values.precio_unitario) || 0
