@@ -1,14 +1,31 @@
 import { useFormik } from 'formik'
 import * as Yup from 'yup'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 const { ipcRenderer } = window.electron
 
-const Formulario = () => {
-  const [idCounter, setIdCounter] = useState(1)
+import './formulario.css'
+
+const Formulario = ({ onClose }) => {
+  const [idFactura, setIdFactura] = useState(1)
+
+  // Obtener el último ID al cargar el formulario
+  useEffect(() => {
+    const fetchLastId = async () => {
+      const lastId = await ipcRenderer.invoke('obtener-ultimo-id')
+      setIdFactura(lastId)
+    }
+    fetchLastId()
+  }, [])
+
+  const handleCerrar = () => {
+    if (window.electron && window.electron.ipcRenderer) {
+      window.electron.ipcRenderer.send('cerrar-ventana-recibo')
+    }
+  }
 
   const formik = useFormik({
     initialValues: {
-      id: idCounter,
+      id: idFactura || '1', // Se asigna cuando el ID esta disponible
       proveedor: '',
       dni: '',
       domicilio: '',
@@ -19,6 +36,7 @@ const Formulario = () => {
       iva: 0.0,
       total: 0.0
     },
+    enableReinitialize: true, // Permite que el ID se actualice cuando cambia "idFactura"
     validationSchema: Yup.object({
       proveedor: Yup.string().required('El proveedor es obligatorio'),
       dni: Yup.string()
@@ -34,10 +52,10 @@ const Formulario = () => {
       try {
         const result = await ipcRenderer.invoke('crear-factura', values)
         alert(`Factura generada con ID: ${result.id}`)
-        setIdCounter((prev) => prev + 1)
+        setIdFactura(result.id + 1)
         resetForm({
           values: {
-            id: idCounter + 1,
+            id: result.id + 1,
             proveedor: '',
             dni: '',
             domicilio: '',
@@ -152,8 +170,12 @@ const Formulario = () => {
             <input type="text" value={formik.values.total} readOnly className="input-readonly" />
           </div>
         </div>
-
-        <button type="submit">Generar Factura</button>
+        <div className="unidad_boton">
+          <button type="submit">Generar Factura</button>
+          <button type="button" onClick={handleCerrar}>
+            Salir
+          </button>
+        </div>
       </div>
     </form>
   )

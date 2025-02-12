@@ -1,26 +1,34 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import icon from '../../resources/icon.png?asset'
 import db from './database'
+
+ipcMain.handle('obtener-ultimo-id', async () => {
+  try {
+    const row = db.prepare('SELECT MAX(id) as lastId FROM Compra').get()
+    return row.lastId ? row.lastId + 1 : 1
+  } catch (error) {
+    console.error('Error al obtener el último ID:', error)
+    throw error
+  }
+})
 
 function createWindow() {
   // crea la ventana principal.
   const mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
+    // width: 900,
+    // height: 800,
     show: false,
     autoHideMenuBar: true,
-    ...(process.platform === 'linux' ? { icon } : {}),
+    // ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
     }
   })
 
-  mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
-  })
+  mainWindow.maximize()
+  mainWindow.show()
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
@@ -34,6 +42,40 @@ function createWindow() {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+}
+
+//Crea la ventana secundaria del formulario
+let reciboWindow = null
+
+function abrirNuevoRecibo() {
+  if (reciboWindow) {
+    reciboWindow.focus() // Si ya está abierta, la enfoca
+    return
+  }
+
+  reciboWindow = new BrowserWindow({
+    width: 900,
+    height: 800,
+    parent: BrowserWindow.getAllWindows()[0], // Hace que sea una ventana hija de la principal
+    modal: true, // Evita que se pueda interactuar con la ventana principal mientras está abierta
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false
+    }
+  })
+
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    reciboWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}#nuevo-recibo`)
+  } else {
+    reciboWindow.loadFile(join(__dirname, '../renderer/index.html'), {
+      hash: 'nuevo-recibo'
+    })
+  }
+
+  reciboWindow.on('closed', () => {
+    reciboWindow = null
+  })
 }
 
 // Este método se llamará cuando Electron haya finalizado
@@ -56,30 +98,23 @@ app.whenReady().then(() => {
   // Manejar el evento "crear-factura"
   ipcMain.handle('crear-factura', async (event, factura) => {
     try {
-      const proveedorStmt = db.prepare(`
+      const insertProveedor = db.prepare(`
         INSERT INTO Proveedor (proveedor, dni, domicilio)
         VALUES (?, ?, ?)
         ON CONFLICT(dni) DO UPDATE SET
-          proveedor = ?,
-          domicilio = ?
+          proveedor = excluded.proveedor,
+          domicilio = excluded.domicilio
       `)
-      const proveedorInfo = proveedorStmt.run(
-        factura.proveedor,
-        factura.dni,
-        factura.domicilio,
-        factura.proveedor,
-        factura.domicilio
-      )
+      insertProveedor.run(factura.proveedor, factura.dni, factura.domicilio)
 
-      const proveedorId =
-        proveedorInfo.lastInsertRowid ||
-        db.prepare('SELECT id FROM Proveedor WHERE dni = ?').get(factura.dni).id
+      // Obtener el ID del proveedor
+      const proveedorId = db.prepare('SELECT id FROM Proveedor WHERE dni = ?').get(factura.dni).id
 
-      const compraStmt = db.prepare(`
+      const insertCompra = db.prepare(`
         INSERT INTO Compra (proveedor_id, articulo, cantidad, precio_unitario, importe, iva, total)
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `)
-      const compraInfo = compraStmt.run(
+      const result = insertCompra.run(
         proveedorId,
         factura.articulo,
         factura.cantidad,
@@ -88,12 +123,54 @@ app.whenReady().then(() => {
         factura.iva,
         factura.total
       )
-      return { id: compraInfo.lastInsertRowid }
+
+      return { id: result.lastInsertRowid }
     } catch (error) {
-      console.error('Error occurred in handler for "crear-factura":', error)
+      console.error('Error al insertar la factura:', error)
       throw error
     }
   })
+
+  // ipcMain.handle('crear-factura', async (event, factura) => {
+  //   try {
+  //     const proveedorStmt = db.prepare(`
+  //       INSERT INTO Proveedor (proveedor, dni, domicilio)
+  //       VALUES (?, ?, ?)
+  //       ON CONFLICT(dni) DO UPDATE SET
+  //         proveedor = ?,
+  //         domicilio = ?
+  //     `)
+  //     const proveedorInfo = proveedorStmt.run(
+  //       factura.proveedor,
+  //       factura.dni,
+  //       factura.domicilio,
+  //       factura.proveedor,
+  //       factura.domicilio
+  //     )
+
+  //     const proveedorId =
+  //       proveedorInfo.lastInsertRowid ||
+  //       db.prepare('SELECT id FROM Proveedor WHERE dni = ?').get(factura.dni).id
+
+  //     const compraStmt = db.prepare(`
+  //       INSERT INTO Compra (proveedor_id, articulo, cantidad, precio_unitario, importe, iva, total)
+  //       VALUES (?, ?, ?, ?, ?, ?, ?)
+  //     `)
+  //     const compraInfo = compraStmt.run(
+  //       proveedorId,
+  //       factura.articulo,
+  //       factura.cantidad,
+  //       factura.precio_unitario,
+  //       factura.importe,
+  //       factura.iva,
+  //       factura.total
+  //     )
+  //     return { id: compraInfo.lastInsertRowid }
+  //   } catch (error) {
+  //     console.error('Error occurred in handler for "crear-factura":', error)
+  //     throw error
+  //   }
+  // })
 
   createWindow()
 
@@ -101,6 +178,14 @@ app.whenReady().then(() => {
     // En macOS es común volver a crear una ventana en la aplicación cuando se hace clic en el
     // ícono del dock y no hay otras ventanas abiertas.
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
+  })
+
+  ipcMain.on('abrir-nuevo-recibo', abrirNuevoRecibo)
+  ipcMain.on('cerrar-ventana-recibo', () => {
+    if (reciboWindow) {
+      reciboWindow.close()
+      reciboWindow = null
+    }
   })
 })
 

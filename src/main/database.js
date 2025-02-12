@@ -2,9 +2,6 @@ import Database from 'better-sqlite3'
 
 const db = new Database('recibos.db', { verbose: console.log })
 
-// Eliminar la tabla existente si es necesario
-db.exec(`DROP TABLE IF EXISTS facturas`)
-
 // Crear tabla Proveedor
 db.exec(`
   CREATE TABLE IF NOT EXISTS Proveedor (
