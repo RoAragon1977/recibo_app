@@ -131,47 +131,6 @@ app.whenReady().then(() => {
     }
   })
 
-  // ipcMain.handle('crear-factura', async (event, factura) => {
-  //   try {
-  //     const proveedorStmt = db.prepare(`
-  //       INSERT INTO Proveedor (proveedor, dni, domicilio)
-  //       VALUES (?, ?, ?)
-  //       ON CONFLICT(dni) DO UPDATE SET
-  //         proveedor = ?,
-  //         domicilio = ?
-  //     `)
-  //     const proveedorInfo = proveedorStmt.run(
-  //       factura.proveedor,
-  //       factura.dni,
-  //       factura.domicilio,
-  //       factura.proveedor,
-  //       factura.domicilio
-  //     )
-
-  //     const proveedorId =
-  //       proveedorInfo.lastInsertRowid ||
-  //       db.prepare('SELECT id FROM Proveedor WHERE dni = ?').get(factura.dni).id
-
-  //     const compraStmt = db.prepare(`
-  //       INSERT INTO Compra (proveedor_id, articulo, cantidad, precio_unitario, importe, iva, total)
-  //       VALUES (?, ?, ?, ?, ?, ?, ?)
-  //     `)
-  //     const compraInfo = compraStmt.run(
-  //       proveedorId,
-  //       factura.articulo,
-  //       factura.cantidad,
-  //       factura.precio_unitario,
-  //       factura.importe,
-  //       factura.iva,
-  //       factura.total
-  //     )
-  //     return { id: compraInfo.lastInsertRowid }
-  //   } catch (error) {
-  //     console.error('Error occurred in handler for "crear-factura":', error)
-  //     throw error
-  //   }
-  // })
-
   createWindow()
 
   app.on('activate', function () {
@@ -186,6 +145,9 @@ app.whenReady().then(() => {
       reciboWindow.close()
       reciboWindow = null
     }
+  })
+  ipcMain.on('cerrar-aplicacion', () => {
+    app.quit()
   })
 })
 

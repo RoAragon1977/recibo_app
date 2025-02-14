@@ -8,6 +8,12 @@ const Navbar = ({ onNuevoRecibo }) => {
     }
   }
 
+  const salirApp = () => {
+    if (window.electron && window.electron.ipcRenderer) {
+      window.electron.ipcRenderer.send('cerrar-aplicacion')
+    }
+  }
+
   return (
     <nav className="navbar">
       <div className="navbar-brand">Recibo App</div>
@@ -28,6 +34,11 @@ const Navbar = ({ onNuevoRecibo }) => {
         </li>
         <li className="navbar-item">
           <button className="navbar-button">Consulta</button>
+        </li>
+        <li className="navbar-item">
+          <button className="navbar-button" onClick={salirApp}>
+            Salir
+          </button>
         </li>
       </ul>
     </nav>
