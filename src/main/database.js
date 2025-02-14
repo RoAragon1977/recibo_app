@@ -23,6 +23,7 @@ db.exec(`
     importe REAL,
     iva REAL,
     total REAL,
+    fecha TEXT DEFAULT (strftime('%d/%m/%Y', 'now', 'localtime')),
     FOREIGN KEY (proveedor_id) REFERENCES Proveedor(id)
   )
 `)

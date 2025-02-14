@@ -23,6 +23,14 @@ const Formulario = ({ onClose }) => {
     }
   }
 
+  const obtenerFechaActual = () => {
+    const fecha = new Date()
+    const dia = String(fecha.getDate()).padStart(2, '0')
+    const mes = String(fecha.getMonth() + 1).padStart(2, '0')
+    const anio = fecha.getFullYear()
+    return `${dia}/${mes}/${anio}`
+  }
+
   const formik = useFormik({
     initialValues: {
       id: idFactura || '1', // Se asigna cuando el ID esta disponible
@@ -34,7 +42,8 @@ const Formulario = ({ onClose }) => {
       precio_unitario: '',
       importe: 0.0,
       iva: 0.0,
-      total: 0.0
+      total: 0.0,
+      fecha: obtenerFechaActual()
     },
     enableReinitialize: true, // Permite que el ID se actualice cuando cambia "idFactura"
     validationSchema: Yup.object({
@@ -93,6 +102,17 @@ const Formulario = ({ onClose }) => {
           <div className="unidad-input">
             <label>ID</label>
             <input type="text" value={formik.values.id} readOnly className="input-readonly" />
+          </div>
+
+          <div className="unidad-input">
+            <label>Fecha</label>
+            <input
+              type="text"
+              name="fecha"
+              value={formik.values.fecha}
+              readOnly
+              className="input-readonly"
+            />
           </div>
 
           <div className="unidad-input">

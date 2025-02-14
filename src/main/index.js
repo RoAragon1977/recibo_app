@@ -111,8 +111,8 @@ app.whenReady().then(() => {
       const proveedorId = db.prepare('SELECT id FROM Proveedor WHERE dni = ?').get(factura.dni).id
 
       const insertCompra = db.prepare(`
-        INSERT INTO Compra (proveedor_id, articulo, cantidad, precio_unitario, importe, iva, total)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO Compra (proveedor_id, articulo, cantidad, precio_unitario, importe, iva, total, fecha)
+        VALUES (?, ?, ?, ?, ?, ?, ?,?)
       `)
       const result = insertCompra.run(
         proveedorId,
@@ -121,7 +121,8 @@ app.whenReady().then(() => {
         factura.precio_unitario,
         factura.importe,
         factura.iva,
-        factura.total
+        factura.total,
+        factura.fecha
       )
 
       return { id: result.lastInsertRowid }
