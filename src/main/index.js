@@ -1,26 +1,13 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import db from './database'
-
-ipcMain.handle('obtener-ultimo-id', async () => {
-  try {
-    const row = db.prepare('SELECT MAX(id) as lastId FROM Compra').get()
-    return row.lastId ? row.lastId + 1 : 1
-  } catch (error) {
-    console.error('Error al obtener el último ID:', error)
-    throw error
-  }
-})
+import { obtenerUltimoId, insertarProveedor, insertarCompra } from './database'
 
 function createWindow() {
   // crea la ventana principal.
   const mainWindow = new BrowserWindow({
-    // width: 900,
-    // height: 800,
     show: false,
     autoHideMenuBar: true,
-    // ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
@@ -35,8 +22,6 @@ function createWindow() {
     return { action: 'deny' }
   })
 
-  // HMR para renderizador basado en la línea de comandos de electron-vite.
-  // Carga la URL remota para desarrollo o el archivo HTML local para producción.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
@@ -44,20 +29,20 @@ function createWindow() {
   }
 }
 
-//Crea la ventana secundaria del formulario
+// Ventana secundaria para "Nuevo Recibo"
 let reciboWindow = null
 
 function abrirNuevoRecibo() {
   if (reciboWindow) {
-    reciboWindow.focus() // Si ya está abierta, la enfoca
+    reciboWindow.focus()
     return
   }
 
   reciboWindow = new BrowserWindow({
     width: 900,
     height: 800,
-    parent: BrowserWindow.getAllWindows()[0], // Hace que sea una ventana hija de la principal
-    modal: true, // Evita que se pueda interactuar con la ventana principal mientras está abierta
+    parent: BrowserWindow.getAllWindows()[0],
+    modal: true,
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -78,43 +63,31 @@ function abrirNuevoRecibo() {
   })
 }
 
-// Este método se llamará cuando Electron haya finalizado
-// la inicialización y esté listo para crear ventanas del navegador.
-// Algunas API solo se pueden usar después de que se produzca este evento.
+// Manejo de eventos de IPC
 app.whenReady().then(() => {
-  // Establecer el ID del modelo de usuario de la aplicación para Windows
   electronApp.setAppUserModelId('com.electron')
 
-  // Abre o cierra DevTools de forma predeterminada con F12 en desarrollo
-  // e ignora CommandOrControl + R en producción.
-  // Consulta https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  // IPC test
   ipcMain.on('ping', () => console.log('pong'))
 
-  // Manejar el evento "crear-factura"
+  // Obtener el último ID de compra
+  ipcMain.handle('obtener-ultimo-id', async () => {
+    try {
+      return obtenerUltimoId()
+    } catch (error) {
+      console.error('Error al obtener el último ID:', error)
+      throw error
+    }
+  })
+
+  // Crear una nueva factura
   ipcMain.handle('crear-factura', async (event, factura) => {
     try {
-      const insertProveedor = db.prepare(`
-        INSERT INTO Proveedor (proveedor, dni, domicilio)
-        VALUES (?, ?, ?)
-        ON CONFLICT(dni) DO UPDATE SET
-          proveedor = excluded.proveedor,
-          domicilio = excluded.domicilio
-      `)
-      insertProveedor.run(factura.proveedor, factura.dni, factura.domicilio)
-
-      // Obtener el ID del proveedor
-      const proveedorId = db.prepare('SELECT id FROM Proveedor WHERE dni = ?').get(factura.dni).id
-
-      const insertCompra = db.prepare(`
-        INSERT INTO Compra (proveedor_id, articulo, cantidad, precio_unitario, importe, iva, total, fecha)
-        VALUES (?, ?, ?, ?, ?, ?, ?,?)
-      `)
-      const result = insertCompra.run(
+      const proveedorId = insertarProveedor(factura.proveedor, factura.dni, factura.domicilio)
+      const idCompra = insertarCompra(
         proveedorId,
         factura.articulo,
         factura.cantidad,
@@ -124,8 +97,7 @@ app.whenReady().then(() => {
         factura.total,
         factura.fecha
       )
-
-      return { id: result.lastInsertRowid }
+      return { id: idCompra }
     } catch (error) {
       console.error('Error al insertar la factura:', error)
       throw error
@@ -160,6 +132,5 @@ app.on('window-all-closed', () => {
     app.quit()
   }
 })
-
 // En este archivo puedes incluir el resto del código del proceso principal específico de tu aplicación.
 // También puedes colocarlos en archivos separados y solicitarlos aquí.
