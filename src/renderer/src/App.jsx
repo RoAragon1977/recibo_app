@@ -1,7 +1,8 @@
 import { HashRouter as Router, Route, Routes } from 'react-router-dom'
 
-import Formulario from './components/formulario/formulario'
 import Navbar from './components/navbar/navbar'
+import Formulario from './components/formulario/formulario'
+import FormProv from './components/formulario/formProv'
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
           }
         />
         <Route path="/nuevo-recibo" element={<Formulario />} />
+        <Route path="/nuevo-proveedor" element={<FormProv />} />
       </Routes>
     </Router>
   )

@@ -1,7 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { obtenerUltimoId, insertarProveedor, insertarCompra } from './database'
+import { obtenerUltimoId, insertarProveedor, insertarrecibo, obtenerProveedor } from './database'
 
 function createWindow() {
   // crea la ventana principal.
@@ -63,6 +63,40 @@ function abrirNuevoRecibo() {
   })
 }
 
+// Ventana secundaria para "Nuevo Proveedor"
+let provWindow = null
+
+function abrirNuevoProv() {
+  if (provWindow) {
+    provWindow.focus()
+    return
+  }
+
+  provWindow = new BrowserWindow({
+    width: 900,
+    height: 800,
+    parent: BrowserWindow.getAllWindows()[0],
+    modal: true,
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false
+    }
+  })
+
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    provWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}#nuevo-proveedor`)
+  } else {
+    provWindow.loadFile(join(__dirname, '../renderer/index.html'), {
+      hash: 'nuevo-proveedor'
+    })
+  }
+
+  provWindow.on('closed', () => {
+    provWindow = null
+  })
+}
+
 // Manejo de eventos de IPC
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.electron')
@@ -84,22 +118,37 @@ app.whenReady().then(() => {
   })
 
   // Crear una nueva factura
-  ipcMain.handle('crear-factura', async (event, factura) => {
+  ipcMain.handle('crear-proveedor', async (event, proveedor) => {
     try {
-      const proveedorId = insertarProveedor(factura.proveedor, factura.dni, factura.domicilio)
-      const idCompra = insertarCompra(
-        proveedorId,
-        factura.articulo,
-        factura.cantidad,
-        factura.precio_unitario,
-        factura.importe,
-        factura.iva,
-        factura.total,
-        factura.fecha
+      const proveedorId = insertarProveedor(
+        proveedor.nombre,
+        proveedor.apellido,
+        proveedor.dni,
+        proveedor.domicilio
       )
-      return { id: idCompra }
+      return { id: proveedorId }
     } catch (error) {
-      console.error('Error al insertar la factura:', error)
+      console.error('Error al crear proveedor:', error)
+      throw error
+    }
+  })
+
+  // Crear un nuevo recibo
+  ipcMain.handle('crear-recibo', async (event, recibo) => {
+    try {
+      const reciboId = insertarRecibo(
+        recibo.proveedorId,
+        recibo.articulo,
+        recibo.cantidad,
+        recibo.precio_unitario,
+        recibo.importe,
+        recibo.iva,
+        recibo.total,
+        recibo.fecha
+      )
+      return { id: reciboId }
+    } catch (error) {
+      console.error('Error al crear recibo', error)
       throw error
     }
   })
@@ -113,15 +162,23 @@ app.whenReady().then(() => {
   })
 
   ipcMain.on('abrir-nuevo-recibo', abrirNuevoRecibo)
+  ipcMain.on('abrir-nuevo-proveedor', abrirNuevoProv)
   ipcMain.on('cerrar-ventana-recibo', () => {
     if (reciboWindow) {
       reciboWindow.close()
       reciboWindow = null
     }
   })
+  ipcMain.on('cerrar-ventana-proveedor', () => {
+    if (provWindow) {
+      provWindow.close()
+      provWindow = null
+    }
+  })
   ipcMain.on('cerrar-aplicacion', () => {
     app.quit()
   })
+  ipcMain.handle('obtener-proveedor', obtenerProveedor)
 })
 
 // Salir cuando se cierran todas las ventanas, excepto en macOS. Allí, es común

@@ -39,6 +39,40 @@ label {
   color: #00ffcc;
 }
 
+.prov {
+  width: 100%;
+  padding: 0.5em;
+  margin-bottom: 1.5em;
+  border: none;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.2); /* Fondo similar a los inputs */
+  color: #ffffff;
+  box-shadow: inset 0 0 5px rgba(0, 255, 204, 0.5);
+  appearance: none; /* Elimina el estilo nativo del navegador */
+  cursor: pointer;
+}
+
+/* Cuando el select está enfocado */
+.prov:focus {
+  outline: none;
+  box-shadow:
+    0 0 10px #00ffcc,
+    0 0 20px #00ffcc,
+    0 0 30px #00ffcc;
+}
+
+/* Estilizar las opciones dentro del desplegable */
+.prov option {
+  background: #0f2027; /* Fondo oscuro para las opciones */
+  color: #ffffff; /* Color del texto */
+}
+
+/* Cuando pasas el mouse sobre una opción */
+.prov option:hover {
+  background: #00ffcc; /* Resalta la opción */
+  color: #0f2027;
+}
+
 input[type='text'] {
   width: 100%;
   padding: 0.5em;

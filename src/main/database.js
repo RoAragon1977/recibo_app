@@ -6,7 +6,8 @@ const db = new Database('recibos.db', { verbose: console.log })
 db.exec(`
   CREATE TABLE IF NOT EXISTS Proveedor (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    proveedor TEXT,
+    nombre TEXT,
+    apellido TEXT,
     dni TEXT UNIQUE,
     domicilio TEXT
   );
@@ -32,21 +33,22 @@ export const obtenerUltimoId = () => {
 }
 
 // Función para insertar o actualizar un proveedor
-export const insertarProveedor = (proveedor, dni, domicilio) => {
+export const insertarProveedor = (nombre, apellido, dni, domicilio) => {
   const insertProveedor = db.prepare(`
-    INSERT INTO Proveedor (proveedor, dni, domicilio)
-    VALUES (?, ?, ?)
+    INSERT INTO Proveedor (nombre, apellido, dni, domicilio)
+    VALUES (?, ?, ?, ?)
     ON CONFLICT(dni) DO UPDATE SET
-      proveedor = excluded.proveedor,
+      nombre = excluded.nombre,
+      apellido = excluded.apellido,
       domicilio = excluded.domicilio
   `)
-  insertProveedor.run(proveedor, dni, domicilio)
+  insertProveedor.run(nombre, apellido, dni, domicilio)
 
   return db.prepare('SELECT id FROM Proveedor WHERE dni = ?').get(dni).id
 }
 
-// Función para insertar una compra
-export const insertarCompra = (
+// Función para insertar una recibo
+export const insertarRecibo = (
   proveedorId,
   articulo,
   cantidad,
@@ -61,7 +63,7 @@ export const insertarCompra = (
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `)
 
-  const result = insertCompra.run(
+  const result = insertarRecibo.run(
     proveedorId,
     articulo,
     cantidad,
@@ -72,6 +74,18 @@ export const insertarCompra = (
     fecha
   )
   return result.lastInsertRowid
+}
+
+export const obtenerProveedor = async () => {
+  try {
+    const proveedores = db
+      .prepare('SELECT id, nombre, apellido FROM Proveedor ORDER BY apellido ASC')
+      .all()
+    return proveedores
+  } catch (error) {
+    console.error('Error al obtener los proveedores:', error)
+    throw error
+  }
 }
 
 export default db
