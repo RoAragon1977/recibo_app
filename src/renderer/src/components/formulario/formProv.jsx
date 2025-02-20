@@ -30,7 +30,7 @@ const FormProv = ({ onClose }) => {
     onSubmit: async (values, { resetForm }) => {
       try {
         const result = await ipcRenderer.invoke('crear-proveedor', values)
-        alert(`Factura generada con ID: ${result.id}`)
+        console.log(`Factura generada con ID: ${result.id}`)
         resetForm({
           values: {
             nombre: '',

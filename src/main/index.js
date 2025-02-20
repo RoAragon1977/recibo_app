@@ -1,7 +1,13 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { obtenerUltimoId, insertarProveedor, insertarrecibo, obtenerProveedor } from './database'
+import {
+  obtenerUltimoId,
+  insertarProveedor,
+  insertarRecibo,
+  obtenerProveedor,
+  obtenerTotalesDiarios
+} from './database'
 
 function createWindow() {
   // crea la ventana principal.
@@ -117,7 +123,7 @@ app.whenReady().then(() => {
     }
   })
 
-  // Crear una nueva factura
+  // Insertar un nuevo proveedor
   ipcMain.handle('crear-proveedor', async (event, proveedor) => {
     try {
       const proveedorId = insertarProveedor(
@@ -149,6 +155,16 @@ app.whenReady().then(() => {
       return { id: reciboId }
     } catch (error) {
       console.error('Error al crear recibo', error)
+      throw error
+    }
+  })
+
+  // Obtener el total del día
+  ipcMain.handle('obtener-total-dia', async (_, fecha) => {
+    try {
+      return obtenerTotalesDiarios(fecha)
+    } catch (error) {
+      console.error('Error al obtener el total del día:', error)
       throw error
     }
   })

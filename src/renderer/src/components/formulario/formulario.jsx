@@ -8,6 +8,7 @@ import './formulario.css'
 const Formulario = ({ onClose }) => {
   const [idFactura, setIdFactura] = useState(1)
   const [proveedores, setProveedores] = useState([])
+  const [totalDelDia, setTotalDelDia] = useState(0)
 
   // Obtener el último ID al cargar el formulario
   useEffect(() => {
@@ -25,6 +26,17 @@ const Formulario = ({ onClose }) => {
       setProveedores(proveedores)
     }
     buscarProveedores()
+  }, [])
+
+  // Obtener el total del día al cargar el formulario
+  const fetchTotalDelDia = async () => {
+    const fecha = obtenerFechaActual()
+    const total = await ipcRenderer.invoke('obtener-total-dia', fecha)
+    setTotalDelDia(total || 0)
+  }
+
+  useEffect(() => {
+    fetchTotalDelDia()
   }, [])
 
   // Cierra la ventana de carga de recibo
@@ -47,8 +59,6 @@ const Formulario = ({ onClose }) => {
     initialValues: {
       id: idFactura || '1', // Se asigna cuando el ID esta disponible
       proveedor: '',
-      // dni: '',
-      // domicilio: '',
       articulo: '',
       cantidad: '',
       precio_unitario: '',
@@ -60,11 +70,6 @@ const Formulario = ({ onClose }) => {
     enableReinitialize: true, // Permite que el ID se actualice cuando cambia "idFactura"
     validationSchema: Yup.object({
       proveedor: Yup.string().required('El proveedor es obligatorio'),
-      // dni: Yup.string()
-      //   .matches(/^\d{7,8}$/, 'El DNI debe tener 7 u 8 dígitos')
-      //   .required('El DNI es obligatorio')
-      //   .transform((value) => (value.length === 7 ? `0${value}` : value)),
-      // domicilio: Yup.string().required('El domicilio es obligatorio'),
       articulo: Yup.string().required('El artículo es obligatorio'),
       cantidad: Yup.number().min(0.01, 'Debe ser mayor a 0').required('Obligatorio'),
       precio_unitario: Yup.number().min(0, 'Debe ser un número positivo').required('Obligatorio')
@@ -72,14 +77,12 @@ const Formulario = ({ onClose }) => {
     onSubmit: async (values, { resetForm }) => {
       try {
         const result = await ipcRenderer.invoke('crear-recibo', values)
-        alert(`Factura generada con ID: ${result.id}`)
+        console.log(`Factura generada con ID: ${result.id}`)
         setIdFactura(result.id + 1)
         resetForm({
           values: {
             id: result.id + 1,
             proveedor: '',
-            // dni: '',
-            // domicilio: '',
             articulo: '',
             cantidad: '',
             precio_unitario: '',
@@ -88,6 +91,7 @@ const Formulario = ({ onClose }) => {
             total: 0.0
           }
         })
+        fetchTotalDelDia() // Actualza el tota del día luego de generar un recibo
       } catch (error) {
         console.error('Error al crear la factura:', error)
       }
@@ -142,20 +146,6 @@ const Formulario = ({ onClose }) => {
               className="input-readonly"
             />
           </div>
-
-          {/*<div className="unidad-input">
-            <label>DNI</label>
-            <input type="text" name="dni" {...formik.getFieldProps('dni')} />
-            {formik.touched.dni && formik.errors.dni && <p>{formik.errors.dni}</p>}
-          </div>
-
-          <div className="unidad-input">
-            <label>Domicilio</label>
-            <input type="text" name="domicilio" {...formik.getFieldProps('domicilio')} />
-            {formik.touched.domicilio && formik.errors.domicilio && (
-              <p>{formik.errors.domicilio}</p>
-            )}
-          </div> */}
         </div>
 
         <div className="conten-compra">
@@ -215,6 +205,9 @@ const Formulario = ({ onClose }) => {
           <button type="button" onClick={handleCerrar}>
             Salir
           </button>
+        </div>
+        <div className="unidad-total">
+          <h3>Total del Día: ${totalDelDia.toFixed(2)}</h3>
         </div>
       </div>
     </form>

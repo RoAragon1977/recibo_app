@@ -47,7 +47,7 @@ export const insertarProveedor = (nombre, apellido, dni, domicilio) => {
   return db.prepare('SELECT id FROM Proveedor WHERE dni = ?').get(dni).id
 }
 
-// Función para insertar una recibo
+// Función para insertar una compra
 export const insertarRecibo = (
   proveedorId,
   articulo,
@@ -58,7 +58,7 @@ export const insertarRecibo = (
   total,
   fecha
 ) => {
-  const insertCompra = db.prepare(`
+  const insertarRecibo = db.prepare(`
     INSERT INTO Compra (proveedor_id, articulo, cantidad, precio_unitario, importe, iva, total, fecha)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `)
@@ -76,6 +76,7 @@ export const insertarRecibo = (
   return result.lastInsertRowid
 }
 
+// Función para obtener la lista de proveedores
 export const obtenerProveedor = async () => {
   try {
     const proveedores = db
@@ -86,6 +87,12 @@ export const obtenerProveedor = async () => {
     console.error('Error al obtener los proveedores:', error)
     throw error
   }
+}
+
+// Función para obtener la suma de los totales diarios
+export const obtenerTotalesDiarios = (fecha) => {
+  const row = db.prepare('SELECT SUM(total) as totalDelDia FROM Compra WHERE fecha = ?').get(fecha)
+  return row ? row.totalDelDia : 0
 }
 
 export default db
