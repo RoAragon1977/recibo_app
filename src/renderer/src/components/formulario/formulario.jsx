@@ -8,6 +8,7 @@ import './formulario.css'
 const Formulario = ({ onClose }) => {
   const [idFactura, setIdFactura] = useState(1)
   const [proveedores, setProveedores] = useState([])
+  const [articulos, setArticulos] = useState([])
   const [totalDelDia, setTotalDelDia] = useState(0)
 
   // Obtener el último ID al cargar el formulario
@@ -26,6 +27,15 @@ const Formulario = ({ onClose }) => {
       setProveedores(proveedores)
     }
     buscarProveedores()
+  }, [])
+
+  // Obtener la lista  de Artículos
+  useEffect(() => {
+    const buscarArticulos = async () => {
+      const articulos = await ipcRenderer.invoke('obtener-articulos')
+      setArticulos(articulos)
+    }
+    buscarArticulos()
   }, [])
 
   // Obtener el total del día al cargar el formulario
@@ -132,7 +142,7 @@ const Formulario = ({ onClose }) => {
           </div>
 
           <div className="unidad-input">
-            <label>ID</label>
+            <label>Nº de Recibo</label>
             <input type="text" value={formik.values.id} readOnly className="input-readonly" />
           </div>
 
@@ -151,7 +161,14 @@ const Formulario = ({ onClose }) => {
         <div className="conten-compra">
           <div className="unidad-input">
             <label>Artículo</label>
-            <input type="text" name="articulo" {...formik.getFieldProps('articulo')} />
+            <select className="prov" name="articulo" {...formik.getFieldProps('articulo')}>
+              <option value="">Seleccione un Articulo</option>
+              {articulos.map((articulo) => (
+                <option key={articulo.id} value={articulo.id}>
+                  {articulo.nombre}
+                </option>
+              ))}
+            </select>
             {formik.touched.articulo && formik.errors.articulo && <p>{formik.errors.articulo}</p>}
           </div>
 
@@ -207,7 +224,13 @@ const Formulario = ({ onClose }) => {
           </button>
         </div>
         <div className="unidad-total">
-          <h3>Total del Día: ${totalDelDia.toFixed(2)}</h3>
+          <h3>
+            Total del Día: $
+            {totalDelDia.toLocaleString('es-ES', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            })}
+          </h3>
         </div>
       </div>
     </form>

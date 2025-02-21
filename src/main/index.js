@@ -2,11 +2,12 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import {
-  obtenerUltimoId,
-  insertarProveedor,
-  insertarRecibo,
   obtenerProveedor,
-  obtenerTotalesDiarios
+  obtenerArticulos,
+  introProveedor,
+  introRecibo,
+  totalDelDia,
+  ultimoIdCompra
 } from './database'
 
 function createWindow() {
@@ -114,60 +115,10 @@ app.whenReady().then(() => {
   ipcMain.on('ping', () => console.log('pong'))
 
   // Obtener el último ID de compra
-  ipcMain.handle('obtener-ultimo-id', async () => {
-    try {
-      return obtenerUltimoId()
-    } catch (error) {
-      console.error('Error al obtener el último ID:', error)
-      throw error
-    }
-  })
-
-  // Insertar un nuevo proveedor
-  ipcMain.handle('crear-proveedor', async (event, proveedor) => {
-    try {
-      const proveedorId = insertarProveedor(
-        proveedor.nombre,
-        proveedor.apellido,
-        proveedor.dni,
-        proveedor.domicilio
-      )
-      return { id: proveedorId }
-    } catch (error) {
-      console.error('Error al crear proveedor:', error)
-      throw error
-    }
-  })
-
-  // Crear un nuevo recibo
-  ipcMain.handle('crear-recibo', async (event, recibo) => {
-    try {
-      const reciboId = insertarRecibo(
-        recibo.proveedorId,
-        recibo.articulo,
-        recibo.cantidad,
-        recibo.precio_unitario,
-        recibo.importe,
-        recibo.iva,
-        recibo.total,
-        recibo.fecha
-      )
-      return { id: reciboId }
-    } catch (error) {
-      console.error('Error al crear recibo', error)
-      throw error
-    }
-  })
-
-  // Obtener el total del día
-  ipcMain.handle('obtener-total-dia', async (_, fecha) => {
-    try {
-      return obtenerTotalesDiarios(fecha)
-    } catch (error) {
-      console.error('Error al obtener el total del día:', error)
-      throw error
-    }
-  })
+  ipcMain.handle('obtener-ultimo-id', ultimoIdCompra)
+  ipcMain.handle('crear-proveedor', introProveedor)
+  ipcMain.handle('crear-recibo', introRecibo)
+  ipcMain.handle('obtener-total-dia', totalDelDia)
 
   createWindow()
 
@@ -177,6 +128,8 @@ app.whenReady().then(() => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 
+  ipcMain.handle('obtener-proveedor', obtenerProveedor)
+  ipcMain.handle('obtener-articulos', obtenerArticulos)
   ipcMain.on('abrir-nuevo-recibo', abrirNuevoRecibo)
   ipcMain.on('abrir-nuevo-proveedor', abrirNuevoProv)
   ipcMain.on('cerrar-ventana-recibo', () => {
@@ -194,7 +147,6 @@ app.whenReady().then(() => {
   ipcMain.on('cerrar-aplicacion', () => {
     app.quit()
   })
-  ipcMain.handle('obtener-proveedor', obtenerProveedor)
 })
 
 // Salir cuando se cierran todas las ventanas, excepto en macOS. Allí, es común
