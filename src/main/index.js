@@ -132,6 +132,7 @@ app.whenReady().then(() => {
   ipcMain.handle('obtener-articulos', obtenerArticulos)
   ipcMain.on('abrir-nuevo-recibo', abrirNuevoRecibo)
   ipcMain.on('abrir-nuevo-proveedor', abrirNuevoProv)
+
   ipcMain.on('cerrar-ventana-recibo', () => {
     if (reciboWindow) {
       reciboWindow.close()
