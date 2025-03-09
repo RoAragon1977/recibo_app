@@ -1,9 +1,13 @@
 import { useFormik } from 'formik'
 import * as Yup from 'yup'
 import { useEffect, useState } from 'react'
-const { ipcRenderer } = window.electron
+import { jsPDF } from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
+import { obtenerFechaActual } from '../../helpers/formHelper'
 import './formulario.css'
+
+const { ipcRenderer } = window.electron
 
 const Formulario = ({ onClose }) => {
   const [idFactura, setIdFactura] = useState(1)
@@ -23,8 +27,12 @@ const Formulario = ({ onClose }) => {
   // Obtener la lista de Proveedores al cargar el formulario
   useEffect(() => {
     const buscarProveedores = async () => {
-      const proveedores = await ipcRenderer.invoke('obtener-proveedor')
-      setProveedores(proveedores)
+      try {
+        const proveedores = await ipcRenderer.invoke('obtener-proveedor')
+        setProveedores(proveedores)
+      } catch (error) {
+        console.error('Error al obtener los proveedores:', error)
+      }
     }
     buscarProveedores()
   }, [])
@@ -32,37 +40,36 @@ const Formulario = ({ onClose }) => {
   // Obtener la lista  de Artículos
   useEffect(() => {
     const buscarArticulos = async () => {
-      const articulos = await ipcRenderer.invoke('obtener-articulos')
-      setArticulos(articulos)
+      try {
+        const articulos = await ipcRenderer.invoke('obtener-articulos')
+        setArticulos(articulos)
+      } catch (error) {
+        console.error('Error al obtener los proveedores:', error)
+      }
     }
     buscarArticulos()
   }, [])
 
   // Obtener el total del día al cargar el formulario
   const fetchTotalDelDia = async () => {
-    const fecha = obtenerFechaActual()
-    const total = await ipcRenderer.invoke('obtener-total-dia', fecha)
-    setTotalDelDia(total || 0)
+    try {
+      const fecha = obtenerFechaActual()
+      const total = await ipcRenderer.invoke('obtener-total-dia', fecha)
+      setTotalDelDia(total || 0)
+    } catch (error) {
+      console.error('Error al obtener el total del día:', error)
+    }
   }
 
   useEffect(() => {
     fetchTotalDelDia()
-  }, [])
+  }, [fetchTotalDelDia])
 
   // Cierra la ventana de carga de recibo
   const handleCerrar = () => {
     if (window.electron && window.electron.ipcRenderer) {
       window.electron.ipcRenderer.send('cerrar-ventana-recibo')
     }
-  }
-
-  // Obtiene la fecha del día que se carga un recivo
-  const obtenerFechaActual = () => {
-    const fecha = new Date()
-    const dia = String(fecha.getDate()).padStart(2, '0')
-    const mes = String(fecha.getMonth() + 1).padStart(2, '0')
-    const anio = fecha.getFullYear()
-    return `${dia}/${mes}/${anio}`
   }
 
   const formik = useFormik({
@@ -102,6 +109,97 @@ const Formulario = ({ onClose }) => {
           }
         })
         fetchTotalDelDia() // Actualza el tota del día luego de generar un recibo
+
+        // Obtener datos del proveedor y articulo seleccionado
+        const provSelec = proveedores.find((p) => p.id === Number(values.proveedor))
+        const artSelec = articulos.find((a) => a.id === Number(values.articulo))
+
+        if (!provSelec || !artSelec) {
+          console.error('Proveedor o Artículo no encontrado')
+          return
+        }
+        console.log('Valores de proveedores:', proveedores)
+        console.log('ID de proveedor seleccionado:', values.proveedor)
+        // Generar PDF
+        const generarPDF = () => {
+          const doc = new jsPDF({ format: 'a4' })
+
+          // Definir márgenes y estilos
+          const margenIzq = 10
+          const margenDer = 190
+          const espacioDuplicado = 140
+
+          // Funcion para generar un recibo
+          const generarRecibo = (startY) => {
+            doc.setFontSize(10)
+            doc.setFont('helvetica', 'normal')
+            let y = startY + 10
+
+            // Información del recibo
+            const fechaForm = formik.values.fecha.replace(/\//g, '  ')
+
+            doc.text(`${fechaForm}`, margenDer - 40, y) // Fecha
+            y += 16
+            doc.text(`Proveedor: ${provSelec.nombre} ${provSelec.apellido}`, margenIzq, y)
+            y += 8
+            doc.text(`DNI: ${provSelec.dni}`, margenIzq, y)
+            y += 8
+            doc.text(`Domicilio: ${provSelec.domicilio}`, margenIzq, y)
+            y += 16
+
+            // Datos de la tabla
+            const columns = ['Artículo', 'Cantidad (Kg)', 'Precio Unitario ($)', 'Total ($)']
+            const data = [
+              [
+                artSelec.nombre, // Se corrige para mostrar el nombre
+                formik.values.cantidad || '0',
+                formik.values.precio_unitario || '0',
+                formik.values.total
+              ]
+            ]
+
+            autoTable(doc, {
+              startY: y,
+              head: [],
+              body: data,
+              theme: 'plain',
+              styles: {
+                fontSize: 10,
+                halign: 'center',
+                cellPadding: 3
+              },
+              headStyles: {
+                fillColor: [255, 255, 255], // color de fondo blanco
+                textColor: [0, 0, 0], //Color de texto negro
+                lineWidth: 0 // Sin bordes
+              },
+              alternateRowStyles: {
+                fillColor: [255, 255, 255]
+              }
+            })
+
+            y = doc.lastAutoTable.finalY + 10
+
+            // Subtotal, IVA y Total alineados a la derecha
+            doc.text(`Subtotal: $${formik.values.importe}`, margenDer - 40, y)
+            y += 8
+            doc.text(`IVA (21%): $${formik.values.iva}`, margenDer - 40, y)
+            y += 8
+            doc.setFont('helvetica', 'bold')
+            doc.text(`Total a pagar: $${formik.values.total}`, margenDer - 40, y)
+          }
+
+          // Generar el primer recibo
+          generarRecibo(20)
+
+          // Generar el segundo recibo en la misma hoja A4 (duplicado)
+          generarRecibo(espacioDuplicado)
+
+          // Guardar PDF en la carpeta de descargas
+          doc.save(`recibo_${result.id}.pdf`)
+        }
+
+        generarPDF()
       } catch (error) {
         console.error('Error al crear la factura:', error)
       }
@@ -180,10 +278,10 @@ const Formulario = ({ onClose }) => {
               inputMode="decimal"
               pattern="\d+(\.\d{1,2})?"
               onChange={(e) => {
-                formik.setFieldValue('cantidad', e.target.value)
+                formik.setFieldValue('cantidad', e.target.value || '0')
                 calcularTotales()
               }}
-              value={formik.values.cantidad}
+              value={formik.values.cantidad || '0'}
             />
           </div>
 
@@ -195,10 +293,10 @@ const Formulario = ({ onClose }) => {
               inputMode="decimal"
               pattern="\d+(\.\d{1,2})?"
               onChange={(e) => {
-                formik.setFieldValue('precio_unitario', e.target.value)
+                formik.setFieldValue('precio_unitario', e.target.value || '0')
                 calcularTotales()
               }}
-              value={formik.values.precio_unitario}
+              value={formik.values.precio_unitario || '0'}
             />
           </div>
 

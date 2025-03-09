@@ -141,7 +141,7 @@ export const introRecibo = async (_, recibo) => {
 export const obtenerProveedor = async () => {
   try {
     const proveedores = db
-      .prepare('SELECT id, nombre, apellido FROM Proveedor ORDER BY apellido ASC')
+      .prepare('SELECT id, nombre, apellido, dni FROM Proveedor ORDER BY apellido ASC')
       .all()
     return proveedores
   } catch (error) {
