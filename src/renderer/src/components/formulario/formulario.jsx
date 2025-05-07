@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
-import { obtenerFechaActual } from '../../helpers/formHelper'
+import { obtenerFechaActual, fetchTotalDelDia } from '../../helpers/formHelper'
 import './formulario.css'
 
 const { ipcRenderer } = window.electron
@@ -15,55 +15,40 @@ const Formulario = ({ onClose }) => {
   const [articulos, setArticulos] = useState([])
   const [totalDelDia, setTotalDelDia] = useState(0)
 
-  // Obtener el último ID al cargar el formulario
+  // Obtener datos al cargar el formulario
   useEffect(() => {
-    const fetchLastId = async () => {
-      const lastId = await ipcRenderer.invoke('obtener-ultimo-id')
-      setIdFactura(lastId)
-    }
-    fetchLastId()
-  }, [])
-
-  // Obtener la lista de Proveedores al cargar el formulario
-  useEffect(() => {
-    const buscarProveedores = async () => {
+    const fetchData = async () => {
       try {
-        const proveedores = await ipcRenderer.invoke('obtener-proveedor')
+        const [lastId, proveedores, articulos] = await Promise.all([
+          ipcRenderer.invoke('obtener-ultimo-id'),
+          ipcRenderer.invoke('obtener-proveedor'),
+          ipcRenderer.invoke('obtener-articulos')
+        ])
+        setIdFactura(lastId)
         setProveedores(proveedores)
-      } catch (error) {
-        console.error('Error al obtener los proveedores:', error)
-      }
-    }
-    buscarProveedores()
-  }, [])
-
-  // Obtener la lista  de Artículos
-  useEffect(() => {
-    const buscarArticulos = async () => {
-      try {
-        const articulos = await ipcRenderer.invoke('obtener-articulos')
         setArticulos(articulos)
       } catch (error) {
-        console.error('Error al obtener los proveedores:', error)
+        console.error('Error al obtener los datos:', error)
       }
     }
-    buscarArticulos()
-  }, [])
-
-  // Obtener el total del día al cargar el formulario
-  const fetchTotalDelDia = async () => {
-    try {
-      const fecha = obtenerFechaActual()
-      const total = await ipcRenderer.invoke('obtener-total-dia', fecha)
-      setTotalDelDia(total || 0)
-    } catch (error) {
-      console.error('Error al obtener el total del día:', error)
-    }
-  }
-
-  useEffect(() => {
+    fetchData()
     fetchTotalDelDia()
   }, [fetchTotalDelDia])
+
+  // Obtener el total del día al cargar el formulario
+  // const fetchTotalDelDia = async () => {
+  //   try {
+  //     const fecha = obtenerFechaActual()
+  //     const total = await ipcRenderer.invoke('obtener-total-dia', fecha)
+  //     setTotalDelDia(total || 0)
+  //   } catch (error) {
+  //     console.error('Error al obtener el total del día:', error)
+  //   }
+  // }
+
+  // useEffect(() => {
+  //   fetchTotalDelDia()
+  // }, [fetchTotalDelDia])
 
   // Cierra la ventana de carga de recibo
   const handleCerrar = () => {

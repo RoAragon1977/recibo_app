@@ -3,7 +3,7 @@ import { ipcMain } from 'electron'
 import db from './database' // Importamos la base de datos // Importamos la base de datos
 
 // Crear nueva factura
-ipcMain.handle('crear-factura', async (event, factura) => {
+ipcMain.handle('crear-recibo', async (event, factura) => {
   try {
     const stmt = db.prepare(`
       INSERT INTO facturas (proveedor, dni, domicilio, articulo, cantidad, precio_unitario, importe, subtotal, iva, total) 
