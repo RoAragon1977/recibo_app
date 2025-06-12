@@ -1,54 +1,61 @@
-import { useFormik } from 'formik'
+import { useFormik, FieldArray, getIn, FormikProvider } from 'formik'
 import * as Yup from 'yup'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
-import { obtenerFechaActual, fetchTotalDelDia } from '../../helpers/formHelper'
+import { generarReciboPDF, obtenerFechaActual } from '../../helpers/formHelper'
 import './formulario.css'
 
 const { ipcRenderer } = window.electron
+
+const STATIC_INITIAL_ITEM = {
+  articulo_id: '', // Guardará el ID del artículo
+  cantidad: '',
+  precio_unitario: '',
+  importe: 0.0,
+  iva: 0.0,
+  total: 0.0
+}
 
 const Formulario = ({ onClose }) => {
   const [idFactura, setIdFactura] = useState(1)
   const [proveedores, setProveedores] = useState([])
   const [articulos, setArticulos] = useState([])
   const [totalDelDia, setTotalDelDia] = useState(0)
+  const [isDataLoaded, setIsDataLoaded] = useState(false)
 
-  // Obtener datos al cargar el formulario
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [lastId, proveedores, articulos] = await Promise.all([
-          ipcRenderer.invoke('obtener-ultimo-id'),
-          ipcRenderer.invoke('obtener-proveedor'),
-          ipcRenderer.invoke('obtener-articulos')
-        ])
-        setIdFactura(lastId)
-        setProveedores(proveedores)
-        setArticulos(articulos)
-      } catch (error) {
-        console.error('Error al obtener los datos:', error)
-      }
+  const fetchInitialData = useCallback(async () => {
+    try {
+      const [lastId, fetchedProveedores, fetchedArticulos] = await Promise.all([
+        ipcRenderer.invoke('obtener-ultimo-id'),
+        ipcRenderer.invoke('obtener-proveedor'),
+        ipcRenderer.invoke('obtener-articulos')
+      ])
+      setIdFactura(lastId)
+      setProveedores(fetchedProveedores)
+      setArticulos(fetchedArticulos)
+      setIsDataLoaded(true)
+    } catch (error) {
+      console.error('Error al obtener los datos iniciales:', error)
     }
-    fetchData()
-    fetchTotalDelDia()
-  }, [fetchTotalDelDia])
+  }, [])
 
-  // Obtener el total del día al cargar el formulario
-  // const fetchTotalDelDia = async () => {
-  //   try {
-  //     const fecha = obtenerFechaActual()
-  //     const total = await ipcRenderer.invoke('obtener-total-dia', fecha)
-  //     setTotalDelDia(total || 0)
-  //   } catch (error) {
-  //     console.error('Error al obtener el total del día:', error)
-  //   }
-  // }
+  const fetchTotalDelDiaCallback = useCallback(async () => {
+    try {
+      const fecha = obtenerFechaActual()
+      const total = await ipcRenderer.invoke('obtener-total-dia', fecha)
+      setTotalDelDia(total || 0)
+    } catch (error) {
+      console.error('Error al obtener el total del día:', error)
+    }
+  }, [])
 
-  // useEffect(() => {
-  //   fetchTotalDelDia()
-  // }, [fetchTotalDelDia])
+  useEffect(() => {
+    fetchInitialData().then(() => {
+      fetchTotalDelDiaCallback()
+    })
+  }, [fetchInitialData, fetchTotalDelDiaCallback])
 
   // Cierra la ventana de carga de recibo
   const handleCerrar = () => {
@@ -59,249 +66,329 @@ const Formulario = ({ onClose }) => {
 
   const formik = useFormik({
     initialValues: {
-      id: idFactura || '1', // Se asigna cuando el ID esta disponible
+      id: idFactura, // Se asigna cuando el ID esta disponible
       proveedor: '',
-      articulo: '',
-      cantidad: '',
-      precio_unitario: '',
-      importe: 0.0,
-      iva: 0.0,
-      total: 0.0,
-      fecha: obtenerFechaActual()
+      fecha: obtenerFechaActual(),
+      items: [STATIC_INITIAL_ITEM],
+      subtotalGeneral: 0.0,
+      ivaGeneral: 0.0,
+      totalGeneral: 0.0
     },
     enableReinitialize: true, // Permite que el ID se actualice cuando cambia "idFactura"
     validationSchema: Yup.object({
       proveedor: Yup.string().required('El proveedor es obligatorio'),
-      articulo: Yup.string().required('El artículo es obligatorio'),
-      cantidad: Yup.number().min(0.01, 'Debe ser mayor a 0').required('Obligatorio'),
-      precio_unitario: Yup.number().min(0, 'Debe ser un número positivo').required('Obligatorio')
+      items: Yup.array()
+        .of(
+          Yup.object().shape({
+            articulo_id: Yup.string().required('El articulo es obligatorio'),
+            cantidad: Yup.number().min(0.01, 'debe ser mayor a 0').required('Obligatorio'),
+            precio_unitario: Yup.number().min(0, 'Positivo').required('Obligatorio')
+          })
+        )
+        .min(1, 'Debe agregar al menos un artículo')
     }),
     onSubmit: async (values, { resetForm }) => {
       try {
-        const result = await ipcRenderer.invoke('crear-recibo', values)
-        console.log(`Factura generada con ID: ${result.id}`)
+        const reciboData = {
+          proveedorId: values.proveedor,
+          fecha: values.fecha,
+          items: values.items.map((item) => ({
+            articulo_id: item.articulo_id,
+            cantidad: parseFloat(item.cantidad),
+            precio_unitario: parseFloat(item.precio_unitario),
+            importe: parseFloat(item.importe),
+            iva: parseFloat(item.iva),
+            total: parseFloat(item.total)
+          })),
+          totalGeneral: parseFloat(values.totalGeneral)
+        }
+
+        const result = await ipcRenderer.invoke('crear-recibo', reciboData)
+        console.log(`Recibo generado con ID: ${result.id}`)
         setIdFactura(result.id + 1)
         resetForm({
           values: {
             id: result.id + 1,
             proveedor: '',
-            articulo: '',
-            cantidad: '',
-            precio_unitario: '',
-            importe: 0.0,
-            iva: 0.0,
-            total: 0.0
+            fecha: obtenerFechaActual(),
+            items: [STATIC_INITIAL_ITEM],
+            subtotalGeneral: 0.0,
+            ivaGeneral: 0.0,
+            totalGeneral: 0.0
           }
         })
-        fetchTotalDelDia() // Actualza el tota del día luego de generar un recibo
 
-        // Obtener datos del proveedor y articulo seleccionado
+        fetchTotalDelDiaCallback()
+
+        // Obtener datos del proveedor seleccionado
         const provSelec = proveedores.find((p) => p.id === Number(values.proveedor))
-        const artSelec = articulos.find((a) => a.id === Number(values.articulo))
 
-        if (!provSelec || !artSelec) {
-          console.error('Proveedor o Artículo no encontrado')
+        if (!provSelec) {
+          console.error('Proveedor no encontrado para PDF')
           return
         }
-        console.log('Valores de proveedores:', proveedores)
-        console.log('ID de proveedor seleccionado:', values.proveedor)
-        // Generar PDF
-        const generarPDF = () => {
-          const doc = new jsPDF({ format: 'a4' })
 
-          // Definir márgenes y estilos
-          const margenIzq = 10
-          const margenDer = 190
-          const espacioDuplicado = 140
-
-          // Funcion para generar un recibo
-          const generarRecibo = (startY) => {
-            doc.setFontSize(10)
-            doc.setFont('helvetica', 'normal')
-            let y = startY + 10
-
-            // Información del recibo
-            const fechaForm = formik.values.fecha.replace(/\//g, '  ')
-
-            doc.text(`${fechaForm}`, margenDer - 40, y) // Fecha
-            y += 16
-            doc.text(`Proveedor: ${provSelec.nombre} ${provSelec.apellido}`, margenIzq, y)
-            y += 8
-            doc.text(`DNI: ${provSelec.dni}`, margenIzq, y)
-            y += 8
-            doc.text(`Domicilio: ${provSelec.domicilio}`, margenIzq, y)
-            y += 16
-
-            // Datos de la tabla
-            const columns = ['Artículo', 'Cantidad (Kg)', 'Precio Unitario ($)', 'Total ($)']
-            const data = [
-              [
-                artSelec.nombre, // Se corrige para mostrar el nombre
-                formik.values.cantidad || '0',
-                formik.values.precio_unitario || '0',
-                formik.values.total
-              ]
-            ]
-
-            autoTable(doc, {
-              startY: y,
-              head: [],
-              body: data,
-              theme: 'plain',
-              styles: {
-                fontSize: 10,
-                halign: 'center',
-                cellPadding: 3
-              },
-              headStyles: {
-                fillColor: [255, 255, 255], // color de fondo blanco
-                textColor: [0, 0, 0], //Color de texto negro
-                lineWidth: 0 // Sin bordes
-              },
-              alternateRowStyles: {
-                fillColor: [255, 255, 255]
-              }
-            })
-
-            y = doc.lastAutoTable.finalY + 10
-
-            // Subtotal, IVA y Total alineados a la derecha
-            doc.text(`Subtotal: $${formik.values.importe}`, margenDer - 40, y)
-            y += 8
-            doc.text(`IVA (21%): $${formik.values.iva}`, margenDer - 40, y)
-            y += 8
-            doc.setFont('helvetica', 'bold')
-            doc.text(`Total a pagar: $${formik.values.total}`, margenDer - 40, y)
-          }
-
-          // Generar el primer recibo
-          generarRecibo(20)
-
-          // Generar el segundo recibo en la misma hoja A4 (duplicado)
-          generarRecibo(espacioDuplicado)
-
-          // Guardar PDF en la carpeta de descargas
-          doc.save(`recibo_${result.id}.pdf`)
-        }
-
-        generarPDF()
+        generarReciboPDF(result.id, values, provSelec, articulos)
       } catch (error) {
-        console.error('Error al crear la factura:', error)
+        console.error('Error al crear el recibo:', error)
       }
     }
   })
 
-  // Formula para calcular el iva y el total del recibo
-  const calcularTotales = () => {
-    const cantidad = parseFloat(formik.values.cantidad) || 0
-    const precioUnitario = parseFloat(formik.values.precio_unitario) || 0
-    const importe = (cantidad * precioUnitario).toFixed(2)
-    const iva = (importe * 0.21).toFixed(2)
-    const total = (parseFloat(importe) + parseFloat(iva)).toFixed(2)
+  // Recalcula totales cuando cambian los items
+  useEffect(() => {
+    let newSubtotalGeneral = 0
+    let newIvaGeneral = 0
+    let newTotalGeneralCalc = 0
 
-    formik.setFieldValue('importe', importe)
-    formik.setFieldValue('iva', iva)
-    formik.setFieldValue('total', total)
+    const updatedItems = formik.values.items.map((item) => {
+      const cantidad = parseFloat(item.cantidad) || 0
+      const precioUnitario = parseFloat(item.precio_unitario) || 0
+      const importe = cantidad * precioUnitario
+      const iva = importe * 0.21
+      const totalItem = importe + iva
+
+      newSubtotalGeneral += importe
+      newIvaGeneral += iva
+      newTotalGeneralCalc += totalItem
+
+      return {
+        ...item,
+        importe: importe.toFixed(2),
+        iva: iva.toFixed(2),
+        total: totalItem.toFixed(2)
+      }
+    })
+
+    // Comprueba si los valores realmente cambiaron para evitar bucles
+    if (JSON.stringify(formik.values.items) !== JSON.stringify(updatedItems)) {
+      formik.setFieldValue('items', updatedItems, false)
+    }
+    if (formik.values.subtotalGeneral !== parseFloat(newSubtotalGeneral.toFixed(2))) {
+      formik.setFieldValue('subtotalGeneral', parseFloat(newSubtotalGeneral.toFixed(2)), false)
+    }
+    if (formik.values.ivaGeneral !== parseFloat(newIvaGeneral.toFixed(2))) {
+      formik.setFieldValue('ivaGeneral', parseFloat(newIvaGeneral.toFixed(2)), false)
+    }
+    if (formik.values.totalGeneral !== parseFloat(newTotalGeneralCalc.toFixed(2))) {
+      formik.setFieldValue('totalGeneral', parseFloat(newTotalGeneralCalc.toFixed(2)), false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formik.values.items]) // Solo se ejecuta si el array 'items' o su contenido cambia.
+
+  // Manejador para cambios en campos de items
+  const handleItemChange = (index, field, value) => {
+    const newItems = formik.values.items.map((item, i) =>
+      i === index ? { ...item, [field]: value } : item
+    )
+    formik.setFieldValue('items', newItems)
+    // Los totales se recalcularán por el useEffect que observa formik.values.items
+  }
+
+  // Renderiza un indicador de carga o null hasta que los datos estén listos
+  if (!isDataLoaded) {
+    return <div>Cargando formulario...</div> // O cualquier otro indicador de carga
   }
 
   return (
-    <form onSubmit={formik.handleSubmit}>
-      <h2 className="titulo">Formulario de Recibo</h2>
-      <div className="contForm">
-        <div className="conten-proveedor">
-          <div className="unidad-input">
-            <label>Proveedor</label>
-            <select className="prov" name="proveedor" {...formik.getFieldProps('proveedor')}>
-              <option value="">Seleccione un proveedor</option>
-              {proveedores.map((proveedor) => (
-                <option key={proveedor.id} value={proveedor.id}>
-                  {proveedor.nombre} {proveedor.apellido}
-                </option>
-              ))}
-            </select>
-            {formik.touched.proveedor && formik.errors.proveedor && (
-              <p>{formik.errors.proveedor}</p>
+    <FormikProvider value={formik}>
+      <form key={idFactura} onSubmit={formik.handleSubmit}>
+        <h2 className="titulo">Formulario de Recibo</h2>
+        <div className="contForm">
+          <div className="conten-proveedor">
+            <div className="unidad-input">
+              <label>Proveedor</label>
+              <select className="prov" name="proveedor" {...formik.getFieldProps('proveedor')}>
+                <option value="">Seleccione un proveedor</option>
+                {proveedores.map((proveedor) => (
+                  <option key={proveedor.id} value={proveedor.id}>
+                    {proveedor.nombre} {proveedor.apellido}
+                  </option>
+                ))}
+              </select>
+              {formik.touched.proveedor && formik.errors.proveedor && (
+                <p>{formik.errors.proveedor}</p>
+              )}
+            </div>
+
+            <div className="unidad-input">
+              <label>Nº de Recibo</label>
+              <input type="text" value={formik.values.id} readOnly className="input-readonly" />
+            </div>
+
+            <div className="unidad-input">
+              <label>Fecha</label>
+              <input
+                type="text"
+                name="fecha"
+                value={formik.values.fecha}
+                readOnly
+                className="input-readonly"
+              />
+            </div>
+          </div>
+          <FieldArray name="items">
+            {({ push, remove }) => (
+              <div className="conten-compra-items">
+                <h4>Artículos del Recibo</h4>
+                <table className="tabla-items">
+                  <thead>
+                    <tr>
+                      <th>Artículo</th>
+                      <th>Cantidad (Kg)</th>
+                      <th>P. Unitario ($)</th>
+                      <th>Importe ($)</th>
+                      <th>IVA (21%) ($)</th>
+                      <th>Total Artículo ($)</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {formik.values.items.map((item, index) => (
+                      <tr key={index}>
+                        <td className="item-articulo">
+                          <select
+                            className="prov" // Considerar renombrar esta clase si es muy genérica
+                            name={`items[${index}].articulo_id`}
+                            value={item.articulo_id}
+                            onChange={(e) => handleItemChange(index, 'articulo_id', e.target.value)}
+                            onBlur={formik.handleBlur}
+                          >
+                            <option value="">Seleccione Artículo</option>
+                            {articulos.map((articulo) => (
+                              <option key={articulo.id} value={articulo.id}>
+                                {articulo.nombre}
+                              </option>
+                            ))}
+                          </select>
+                          {getIn(formik.touched, `items[${index}].articulo_id`) &&
+                            getIn(formik.errors, `items[${index}].articulo_id`) && (
+                              <p className="error-message">
+                                {getIn(formik.errors, `items[${index}].articulo_id`)}
+                              </p>
+                            )}
+                        </td>
+                        <td className="item-cantidad">
+                          <input
+                            type="text"
+                            name={`items[${index}].cantidad`}
+                            inputMode="decimal"
+                            pattern="\d*([.,]\d+)?"
+                            value={item.cantidad}
+                            onChange={(e) =>
+                              handleItemChange(index, 'cantidad', e.target.value.replace(',', '.'))
+                            }
+                            onBlur={formik.handleBlur}
+                          />
+                          {getIn(formik.touched, `items[${index}].cantidad`) &&
+                            getIn(formik.errors, `items[${index}].cantidad`) && (
+                              <p className="error-message">
+                                {getIn(formik.errors, `items[${index}].cantidad`)}
+                              </p>
+                            )}
+                        </td>
+                        <td className="item-precio">
+                          <input
+                            type="text"
+                            name={`items[${index}].precio_unitario`}
+                            inputMode="decimal"
+                            pattern="\d*([.,]\d+)?"
+                            value={item.precio_unitario}
+                            onChange={(e) =>
+                              handleItemChange(
+                                index,
+                                'precio_unitario',
+                                e.target.value.replace(',', '.')
+                              )
+                            }
+                            onBlur={formik.handleBlur}
+                          />
+                          {getIn(formik.touched, `items[${index}].precio_unitario`) &&
+                            getIn(formik.errors, `items[${index}].precio_unitario`) && (
+                              <p className="error-message">
+                                {getIn(formik.errors, `items[${index}].precio_unitario`)}
+                              </p>
+                            )}
+                        </td>
+                        <td className="item-importe">
+                          <input
+                            type="text"
+                            value={item.importe}
+                            readOnly
+                            className="input-readonly"
+                          />
+                        </td>
+                        <td className="item-iva">
+                          <input type="text" value={item.iva} readOnly className="input-readonly" />
+                        </td>
+                        <td className="item-total-articulo">
+                          <input
+                            type="text"
+                            value={item.total}
+                            readOnly
+                            className="input-readonly"
+                          />
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className="remove-item-btn"
+                            onClick={() => formik.values.items.length > 1 && remove(index)}
+                            disabled={formik.values.items.length <= 1}
+                          >
+                            Quitar
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <button
+                  type="button"
+                  className="add-item-btn"
+                  onClick={() => push(STATIC_INITIAL_ITEM)}
+                >
+                  Agregar Artículo
+                </button>
+              </div>
             )}
-          </div>
+          </FieldArray>
 
-          <div className="unidad-input">
-            <label>Nº de Recibo</label>
-            <input type="text" value={formik.values.id} readOnly className="input-readonly" />
+          <div className="conten-totales-generales">
+            <div className="unidad-input">
+              <label>Subtotal</label>
+              <input
+                type="text"
+                value={formik.values.subtotalGeneral.toFixed(2)}
+                readOnly
+                className="input-readonly"
+              />
+            </div>
+            <div className="unidad-input">
+              <label>IVA</label>
+              <input
+                type="text"
+                value={formik.values.ivaGeneral.toFixed(2)}
+                readOnly
+                className="input-readonly"
+              />
+            </div>
+            <div className="unidad-input">
+              <label>Total</label>
+              <input
+                type="text"
+                value={formik.values.totalGeneral.toFixed(2)}
+                readOnly
+                className="input-readonly"
+              />
+            </div>
           </div>
-
-          <div className="unidad-input">
-            <label>Fecha</label>
-            <input
-              type="text"
-              name="fecha"
-              value={formik.values.fecha}
-              readOnly
-              className="input-readonly"
-            />
-          </div>
-        </div>
-
-        <div className="conten-compra">
-          <div className="unidad-input">
-            <label>Artículo</label>
-            <select className="prov" name="articulo" {...formik.getFieldProps('articulo')}>
-              <option value="">Seleccione un Articulo</option>
-              {articulos.map((articulo) => (
-                <option key={articulo.id} value={articulo.id}>
-                  {articulo.nombre}
-                </option>
-              ))}
-            </select>
-            {formik.touched.articulo && formik.errors.articulo && <p>{formik.errors.articulo}</p>}
-          </div>
-
-          <div className="unidad-input">
-            <label>Cantidad (Kg)</label>
-            <input
-              type="text"
-              name="cantidad"
-              inputMode="decimal"
-              pattern="\d+(\.\d{1,2})?"
-              onChange={(e) => {
-                formik.setFieldValue('cantidad', e.target.value || '0')
-                calcularTotales()
-              }}
-              value={formik.values.cantidad || '0'}
-            />
-          </div>
-
-          <div className="unidad-input">
-            <label>Precio Unitario ($)</label>
-            <input
-              type="text"
-              name="precio_unitario"
-              inputMode="decimal"
-              pattern="\d+(\.\d{1,2})?"
-              onChange={(e) => {
-                formik.setFieldValue('precio_unitario', e.target.value || '0')
-                calcularTotales()
-              }}
-              value={formik.values.precio_unitario || '0'}
-            />
-          </div>
-
-          <div className="unidad-input">
-            <label>Importe</label>
-            <input type="text" value={formik.values.importe} readOnly className="input-readonly" />
-          </div>
-
-          <div className="unidad-input">
-            <label>IVA (21%)</label>
-            <input type="text" value={formik.values.iva} readOnly className="input-readonly" />
-          </div>
-
-          <div className="unidad-input">
-            <label>Total</label>
-            <input type="text" value={formik.values.total} readOnly className="input-readonly" />
-          </div>
+          <div className="unidad_boton"></div>
         </div>
         <div className="unidad_boton">
-          <button type="submit">Generar Factura</button>
+          <button type="submit" disabled={formik.isSubmitting || !formik.isValid || !formik.dirty}>
+            Generar Recibo
+          </button>
           <button type="button" onClick={handleCerrar}>
             Salir
           </button>
@@ -315,8 +402,8 @@ const Formulario = ({ onClose }) => {
             })}
           </h3>
         </div>
-      </div>
-    </form>
+      </form>
+    </FormikProvider>
   )
 }
 

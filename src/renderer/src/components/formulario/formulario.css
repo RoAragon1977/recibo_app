@@ -1,7 +1,7 @@
 .titulo {
   text-align: center;
-  font-size: 2em;
-  margin-bottom: 1em;
+  font-size: 1.8em;
+  margin-bottom: 0.8em;
   color: #00ffcc;
   text-shadow:
     0 0 10px #00ffcc,
@@ -11,21 +11,23 @@
 
 .contForm {
   background: rgba(255, 255, 255, 0.1);
-  padding: 2em;
-  border-radius: 10px;
+  padding: 1.5em;
+  border-radius: 8px;
   box-shadow: 0 0 20px rgba(0, 255, 204, 0.5);
   border: 1px solid #00ffcc;
   display: flex;
   flex-direction: column;
   width: 100%;
   max-width: 800px;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
 }
 
 .conten-proveedor,
 .conten-compra {
   display: flex;
   flex-wrap: wrap;
-  gap: 1em;
+  gap: 0.8em;
 }
 
 .unidad-input {
@@ -35,14 +37,15 @@
 
 label {
   display: block;
-  margin-bottom: 0.5em;
+  margin-bottom: 0.3em;
   color: #00ffcc;
+  font-size: 0.9em;
 }
 
 .prov {
   width: 100%;
-  padding: 0.5em;
-  margin-bottom: 1.5em;
+  padding: 0.4em;
+  margin-bottom: 0.8em;
   border: none;
   border-radius: 5px;
   background: rgba(255, 255, 255, 0.2); /* Fondo similar a los inputs */
@@ -50,6 +53,7 @@ label {
   box-shadow: inset 0 0 5px rgba(0, 255, 204, 0.5);
   appearance: none; /* Elimina el estilo nativo del navegador */
   cursor: pointer;
+  font-size: 0.9em;
 }
 
 /* Cuando el select está enfocado */
@@ -75,13 +79,14 @@ label {
 
 input[type='text'] {
   width: 100%;
-  padding: 0.5em;
-  margin-bottom: 1em;
+  padding: 0.4em;
+  margin-bottom: 0.8em;
   border: none;
   border-radius: 5px;
   background: rgba(255, 255, 255, 0.2);
   color: #ffffff;
   box-shadow: inset 0 0 5px rgba(0, 255, 204, 0.5);
+  font-size: 0.9em;
 }
 
 input[type='text']:focus {
@@ -99,12 +104,12 @@ input[type='text']:focus {
 
 .unidad_boton button {
   width: 20em;
-  padding: 0.75em;
+  padding: 0.6em 0.75em;
   border: none;
   border-radius: 5px;
   background: #00ffcc;
   color: #0f2027;
-  font-size: 1em;
+  font-size: 0.9em;
   cursor: pointer;
   transition: background 0.3s ease;
 }
@@ -115,10 +120,177 @@ input[type='text']:focus {
 
 .unidad-total {
   width: 100%;
-  margin-top: 0.75em;
+  margin-top: 0.5em;
   border-radius: 10px;
   box-shadow: 0 0 20px rgba(0, 255, 204, 0.5);
   border: 1px solid #00ffcc;
   text-align: center;
-  padding: 0.75em;
+  padding: 0.6em;
+}
+
+.unidad-total h3 {
+  font-size: 1em; /* Reducido */
+}
+
+/* Agregado para varios artículos */
+
+.conten-compra-items h4 {
+  margin-bottom: 10px;
+  text-align: center;
+  font-size: 1em;
+}
+
+.item-row {
+  display: flex;
+  flex-wrap: wrap; /* Permite que los elementos pasen a la siguiente línea si no caben */
+  align-items: flex-start; /* Alinea los elementos al inicio para etiquetas y campos */
+  border: 1px solid rgba(0, 255, 204, 0.2);
+  padding: 8px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  position: relative; /* Para posicionar el botón de quitar */
+}
+
+.item-row .unidad-input {
+  margin-right: 8px; /* Espacio entre campos */
+  margin-bottom: 8px; /* Espacio si los elementos se envuelven */
+  flex: 1 1 150px; /* Permite que los campos crezcan y se encojan, con una base de 150px */
+}
+
+.item-row .unidad-input label {
+  min-width: auto; /* Asegura que las etiquetas tengan suficiente espacio */
+  font-size: 0.85em;
+}
+
+.item-row .item-articulo {
+  flex: 2 1 200px; /* Dar más espacio al selector de artículo */
+}
+
+.remove-item-btn,
+.add-item-btn {
+  padding: 6px 10px; /* Reducido */
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85em; /* Reducido */
+}
+
+.remove-item-btn {
+  background-color: #f44336; /* Rojo */
+  color: white;
+}
+
+.add-item-btn {
+  background-color: #4caf50; /* Verde */
+  color: white;
+  display: block; /* Hace que ocupe todo el ancho disponible */
+  width: fit-content; /* Ajusta el ancho al contenido */
+  margin: 10px auto 10px auto; /* Centra el botón */
+}
+
+.remove-item-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.conten-totales-generales {
+  margin-top: 15px;
+  padding-top: 10px;
+  border-top: 1px solid #ccc;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end; /* Alinea los totales a la derecha */
+}
+
+.conten-totales-generales .unidad-input {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  width: 300px; /* Ajusta el ancho según sea necesario */
+  margin-bottom: 3px;
+}
+.conten-totales-generales .unidad-input label {
+  margin-right: 8px;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+
+/* Ajustes para que los inputs readonly de totales se vean bien */
+.conten-totales-generales .input-readonly {
+  text-align: right;
+  font-weight: bold;
+}
+
+/* Ajuste para el botón de generar factura */
+.unidad_boton button[type='submit']:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+/* Estilos para la tabla de artículos */
+.tabla-items {
+  width: 100%;
+  border-collapse: collapse; /* Une los bordes de las celdas */
+  margin-bottom: 1em; /* Espacio después de la tabla */
+}
+
+.tabla-items th,
+.tabla-items td {
+  border: 1px solid rgba(0, 255, 204, 0.3); /* Borde sutil para celdas */
+  padding: 0.4em;
+  text-align: left;
+  vertical-align: top; /* Alinea el contenido al tope, útil si los mensajes de error hacen crecer la celda */
+}
+
+.tabla-items th {
+  background-color: rgba(0, 255, 204, 0.1); /* Fondo ligero para encabezados */
+  color: #00ffcc;
+  font-weight: bold;
+}
+
+/* Ajustes para inputs y selects dentro de la tabla para que ocupen el ancho de la celda */
+.tabla-items td input[type='text'],
+.tabla-items td select {
+  width: calc(100% - 1em); /* Ajusta el ancho restando el padding del input/select */
+  margin-bottom: 0.2em; /* Menor margen inferior dentro de la tabla */
+  font-size: 0.85em;
+  padding: 0.3em;
+}
+
+/* Estilo para los mensajes de error de Yup */
+.error-message {
+  color: #ff6b6b; /* Un color rojo para errores */
+  font-size: 0.75em;
+  margin-top: 0.25em;
+  display: block; /* Asegura que ocupe su propia línea */
+}
+
+/* Clases específicas para celdas si necesitas anchos diferentes */
+.tabla-items .item-articulo {
+  width: 25%; /* Ejemplo de ancho para la columna de artículo */
+}
+.tabla-items .item-cantidad,
+.tabla-items .item-precio {
+  width: 15%; /* Ejemplo de ancho para cantidad y precio */
+}
+.tabla-items .item-importe,
+.tabla-items .item-iva,
+.tabla-items .item-total-articulo {
+  width: 12%; /* Ejemplo para importes e IVA */
+}
+.tabla-items .item-acciones {
+  width: 10%;
+  text-align: center;
+}
+
+/* Ajuste para que los inputs readonly dentro de la tabla se vean bien */
+.tabla-items .input-readonly {
+  background-color: rgba(
+    255,
+    255,
+    255,
+    0.1
+  ); /* Un poco más oscuro o diferente para indicar no editable */
+  color: #a0a0a0; /* Color de texto más tenue */
+  border: 1px solid rgba(0, 255, 204, 0.2);
 }

@@ -15,14 +15,21 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS Compra (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     proveedor_id INTEGER,
+    fecha TEXT DEFAULT (strftime('%d/%m/%Y', 'now', 'localtime')),
+    total_general REAL, -- Este sera el total de todos los artículos en la compra
+    FOREIGN KEY (proveedor_id) REFERENCES Proveedor(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS CompraDetalle (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    compra_id INTEGER,
     articulo_id INTEGER,
-    cantidad INTEGER,
+    cantidad REAL,
     precio_unitario REAL,
     importe REAL,
     iva REAL,
     total REAL,
-    fecha TEXT DEFAULT (strftime('%d/%m/%Y', 'now', 'localtime')),
-    FOREIGN KEY (proveedor_id) REFERENCES Proveedor(id),
+    FOREIGN KEY (compra_id) REFERENCES Compra(id),
     FOREIGN KEY (articulo_id) REFERENCES Articulo(id)
   );
 
@@ -37,11 +44,20 @@ db.exec(`
 const verificarArticulos = db.prepare('SELECT COUNT(*) as count FROM Articulo').get()
 
 if (verificarArticulos.count === 0) {
+  const articulosAPrecargar = [
+    { nombre: 'Cartón' },
+    { nombre: 'Papel Blanco' },
+    { nombre: 'Papel Color' },
+    { nombre: 'Botella Blanca' },
+    { nombre: 'Botella Verde' },
+    { nombre: 'Film' },
+    { nombre: 'Soplado' }
+  ]
   const insertArticulo = db.prepare('INSERT INTO Articulo (nombre) VALUES (?)')
-  const insertMany = db.transaction((articulos) => {
-    for (const articulo of articulos) insertArticulo.run(articulo)
+  const insertMany = db.transaction((items) => {
+    for (const item of items) insertArticulo.run(item.nombre)
   })
-  insertMany(articulos)
+  insertMany(articulosAPrecargar)
 }
 
 // Función para obtener el último ID de compra
@@ -90,45 +106,49 @@ export const introProveedor = async (_, proveedor) => {
 }
 
 // Función para insertar una compra
-const insertarRecibo = (
-  proveedorId,
-  articuloId,
-  cantidad,
-  precioUnitario,
-  importe,
-  iva,
-  total,
-  fecha
-) => {
-  const insertarRecibo = db.prepare(`
-    INSERT INTO Compra (proveedor_id, articulo_id, cantidad, precio_unitario, importe, iva, total, fecha)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+const insertarReciboConDetalles = (proveedorId, fecha, items, totalGeneral) => {
+  const stmtCompra = db.prepare(`
+    INSERT INTO Compra (proveedor_id, fecha, total_general)
+    VALUES (?, ?, ?)
   `)
 
-  const result = insertarRecibo.run(
-    proveedorId,
-    articuloId,
-    cantidad,
-    precioUnitario,
-    importe,
-    iva,
-    total,
-    fecha
-  )
-  return result.lastInsertRowid
+  const stmtCompraDetalle = db.prepare(`
+    INSERT INTO CompraDetalle (compra_id, articulo_id, cantidad, precio_unitario, importe, iva, total)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `)
+
+  const transaction = db.transaction(() => {
+    const infoCompra = stmtCompra.run(proveedorId, fecha, totalGeneral)
+    const compraId = infoCompra.lastInsertRowid
+
+    if (!compraId) {
+      throw new Error('Fallo al insertar en la tabla Compra.')
+    }
+
+    for (const item of items) {
+      stmtCompraDetalle.run(
+        compraId,
+        item.articulo_id,
+        item.cantidad,
+        item.precio_unitario,
+        item.importe,
+        item.iva,
+        item.total
+      )
+    }
+    return compraId
+  })
+
+  return transaction()
 }
 
 export const introRecibo = async (_, recibo) => {
   try {
-    const reciboId = insertarRecibo(
+    const reciboId = insertarReciboConDetalles(
       recibo.proveedorId,
-      recibo.articulo,
-      recibo.cantidad,
-      recibo.precio_unitario,
-      recibo.importe,
-      recibo.iva,
-      recibo.total,
-      recibo.fecha
+      recibo.fecha,
+      recibo.items,
+      recibo.totalGeneral
     )
     return { id: reciboId }
   } catch (error) {
@@ -163,7 +183,9 @@ export const obtenerArticulos = async () => {
 
 // Función para obtener la suma de los totales diarios
 const obtenerTotalesDiarios = (fecha) => {
-  const row = db.prepare('SELECT SUM(total) as totalDelDia FROM Compra WHERE fecha = ?').get(fecha)
+  const row = db
+    .prepare('SELECT SUM(total_general) as totalDelDia FROM Compra WHERE fecha = ?')
+    .get(fecha)
   return row ? row.totalDelDia : 0
 }
 

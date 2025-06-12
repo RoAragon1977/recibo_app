@@ -50,6 +50,7 @@ function abrirNuevoRecibo() {
     height: 800,
     parent: BrowserWindow.getAllWindows()[0],
     modal: true,
+    fullscreen: true,
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
