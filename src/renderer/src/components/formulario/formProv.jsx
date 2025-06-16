@@ -1,13 +1,16 @@
 import { useFormik } from 'formik'
 import * as Yup from 'yup'
-const { ipcRenderer } = window.electron
+import { ToastContainer, toast } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
 import './formulario.css'
 
+const { ipcRenderer } = window.api
+
 const FormProv = ({ onClose }) => {
   const handleCerrar = () => {
-    if (window.electron && window.electron.ipcRenderer) {
-      window.electron.ipcRenderer.send('cerrar-ventana-proveedor')
+    if (window.api && window.api.ipcRenderer) {
+      window.api.ipcRenderer.send('cerrar-ventana-proveedor')
     }
   }
 
@@ -29,8 +32,7 @@ const FormProv = ({ onClose }) => {
     }),
     onSubmit: async (values, { resetForm }) => {
       try {
-        const result = await ipcRenderer.invoke('crear-proveedor', values)
-        console.log(`Factura generada con ID: ${result.id}`)
+        await ipcRenderer.invoke('crear-proveedor', values)
         resetForm({
           values: {
             nombre: '',
@@ -39,14 +41,27 @@ const FormProv = ({ onClose }) => {
             domicilio: ''
           }
         })
+        toast.success(`Proveedor "${values.nombre} ${values.apellido}" creado exitosamente.`)
       } catch (error) {
-        console.error('Error al crear la factura:', error)
+        console.error('Error al crear el proveedor:', error)
+        toast.error(`Error al crear el proveedor: ${error.message || 'Error desconocido'}`)
       }
     }
   })
 
   return (
     <form onSubmit={formik.handleSubmit}>
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
       <h2 className="titulo">Formulario Nuevo Proveedor</h2>
       <div className="contForm">
         <div className="conten-proveedor">

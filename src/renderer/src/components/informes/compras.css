@@ -1,0 +1,141 @@
+/* Estilos para el contenedor principal del informe de compras */
+.compras-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh; /* Ocupa toda la altura de la ventana */
+  overflow: hidden; /* Evita el scroll en el contenedor principal */
+  font-family: Arial, sans-serif; /* Una fuente base legible */
+}
+
+/* Estilo para el título principal */
+.compras-container > h2 {
+  padding: 10px 15px;
+  margin: 0;
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+  border-bottom: 1px solid #ccc;
+  flex-shrink: 0; /* No permitir que se encoja */
+  font-size: 1.4rem; /* Tamaño de fuente ajustado */
+  color: white;
+}
+
+/* Estilos para la sección de filtros */
+.filtros-informe {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Espacio reducido entre elementos */
+  padding: 10px 15px; /* Padding ajustado */
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+  border-bottom: 1px solid #ccc;
+  flex-wrap: wrap; /* Permitir que los elementos se envuelvan si no caben */
+  flex-shrink: 0; /* No permitir que se encoja */
+}
+
+.filtros-informe label {
+  margin-right: 4px;
+  font-size: 0.85rem; /* Fuente más pequeña para etiquetas */
+  color: #e0e0e0;
+}
+
+.filtros-informe select,
+.filtros-informe input[type='number'],
+.filtros-informe button {
+  padding: 6px 10px; /* Padding ajustado para controles */
+  font-size: 0.85rem; /* Fuente más pequeña */
+  margin-right: 6px;
+  border-radius: 3px;
+  border: 1px solid #ccc;
+  height: 32px; /* Altura fija para alinear mejor */
+  box-sizing: border-box;
+}
+
+.filtros-informe input[type='number'] {
+  width: 80px; /* Ancho ajustado para el año */
+}
+
+.filtros-informe button {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #e0e0e0;
+  border: 1px solid #5a7a8a;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.filtros-informe button:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: #7c9aab;
+  color: #ffffff;
+}
+
+.filtros-informe button:disabled {
+  background-color: rgba(108, 117, 125, 0.2);
+  border-color: #495057;
+  color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Estilos para la sección del informe que tendrá scroll */
+.informe-display {
+  flex-grow: 1; /* Ocupa el espacio restante */
+  overflow-y: auto; /* Habilita el scroll vertical cuando sea necesario */
+  padding: 15px;
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+}
+
+.informe-display h3,
+.informe-display h4,
+.informe-display h5 {
+  margin-top: 12px;
+  margin-bottom: 6px;
+  color: white;
+}
+.informe-display h3 {
+  font-size: 1.2rem;
+}
+.informe-display h4 {
+  font-size: 1.05rem;
+}
+.informe-display h5 {
+  font-size: 0.95rem;
+  color: white;
+}
+
+.informe-display table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+  font-size: 0.8rem; /* Fuente más pequeña para tablas */
+}
+
+.informe-display th,
+.informe-display td {
+  border: 1px solid #ddd;
+  padding: 5px 8px; /* Padding reducido en celdas */
+  text-align: left;
+}
+
+.informe-display th {
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+  font-weight: bold;
+  color: white;
+}
+
+.proveedor-section {
+  margin-bottom: 12px;
+  padding: 10px;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+}
+
+.compra-details {
+  margin-top: 8px;
+}
+
+/* Estilo para mensajes cuando no hay datos */
+.informe-display p {
+  font-size: 0.9rem;
+  color: white;
+}

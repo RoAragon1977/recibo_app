@@ -101,14 +101,43 @@ const generarReciboPDF = (reciboId, formValues, proveedorSeleccionado, articulos
   doc.save(`recibo_${reciboId}.pdf`)
 }
 
-const fetchTotalDelDia = async () => {
-  try {
-    const fecha = obtenerFechaActual()
-    const total = await ipcRenderer.invoke('obtener-total-dia', fecha)
-    setTotalDelDia(total || 0)
-  } catch (error) {
-    console.error('Error al obtener el total del día:', error)
-  }
+// Función auxiliar para agrupar los datos para visualización del informe de compras
+const agruparDatosInforme = (datosPlanos) => {
+  if (!datosPlanos || datosPlanos.length === 0) return []
+
+  const agrupadoPorProveedor = datosPlanos.reduce((acc, item) => {
+    const claveProveedor = `${item.proveedor_id}_${item.proveedor_nombre}_${item.proveedor_apellido}`
+    if (!acc[claveProveedor]) {
+      acc[claveProveedor] = {
+        proveedor_id: item.proveedor_id,
+        proveedor_nombre: item.proveedor_nombre,
+        proveedor_apellido: item.proveedor_apellido,
+        compras: {}
+      }
+    }
+
+    const claveCompraId = item.compra_id.toString()
+
+    if (!acc[claveProveedor].compras[claveCompraId]) {
+      acc[claveProveedor].compras[claveCompraId] = {
+        compra_id: item.compra_id,
+        compra_fecha: item.compra_fecha,
+        articulos: []
+      }
+    }
+
+    acc[claveProveedor].compras[claveCompraId].articulos.push({
+      articulo_nombre: item.articulo_nombre,
+      articulo_cantidad: item.articulo_cantidad,
+      articulo_importe_sin_iva: parseFloat(item.articulo_importe_sin_iva)
+    })
+    return acc
+  }, {})
+
+  return Object.values(agrupadoPorProveedor).map((proveedor) => ({
+    ...proveedor,
+    compras: Object.values(proveedor.compras).sort((a, b) => a.compra_id - b.compra_id)
+  }))
 }
 
-export { obtenerFechaActual, generarReciboPDF, fetchTotalDelDia }
+export { obtenerFechaActual, generarReciboPDF, agruparDatosInforme }

@@ -1,5 +1,6 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
+import fs from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import {
   obtenerProveedor,
@@ -7,7 +8,8 @@ import {
   introProveedor,
   introRecibo,
   totalDelDia,
-  ultimoIdCompra
+  ultimoIdCompra,
+  obtenerInformeComprasMensuales
 } from './database'
 
 function createWindow() {
@@ -105,6 +107,69 @@ function abrirNuevoProv() {
   })
 }
 
+// Ventana para "Informe de Compras Mensuales"
+let informeComprasWindow = null
+
+function abrirVentanaInformeCompras() {
+  if (informeComprasWindow) {
+    informeComprasWindow.focus()
+    return
+  }
+
+  informeComprasWindow = new BrowserWindow({
+    fullscreen: true,
+    parent: BrowserWindow.getAllWindows()[0], // Opcional: hacerlo hijo de la ventana principal
+    modal: true,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false
+    }
+  })
+
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    informeComprasWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}#informe-compras-ventana`)
+  } else {
+    informeComprasWindow.loadFile(join(__dirname, '../renderer/index.html'), {
+      hash: 'informe-compras-ventana'
+    })
+  }
+
+  informeComprasWindow.on('closed', () => {
+    informeComprasWindow = null
+  })
+}
+
+// Manejador para generar PDF del informe de compras
+async function handleGenerarPdfInformeCompras(_event, { mes, anio }) {
+  if (!informeComprasWindow) {
+    return { success: false, message: 'La ventana del informe no está abierta.' }
+  }
+
+  try {
+    const { filePath, canceled } = await dialog.showSaveDialog(informeComprasWindow, {
+      title: 'Guardar Informe PDF',
+      defaultPath: `informe_compras_${mes.toString().padStart(2, '0')}_${anio}.pdf`,
+      filters: [{ name: 'Archivos PDF', extensions: ['pdf'] }]
+    })
+
+    if (canceled || !filePath) {
+      return { success: false, message: 'Guardado cancelado por el usuario.' }
+    }
+
+    const pdfData = await informeComprasWindow.webContents.printToPDF({
+      printBackground: true, // Importante para incluir estilos CSS (colores, fondos)
+      pageSize: 'A4', // Puedes ajustar esto (Letter, A3, etc.)
+      landscape: false // Cambia a true si prefieres orientación horizontal
+    })
+
+    await fs.writeFile(filePath, pdfData)
+    return { success: true, path: filePath }
+  } catch (error) {
+    console.error('Error al generar o guardar el PDF:', error)
+    return { success: false, message: `Error al generar PDF: ${error.message}` }
+  }
+}
+
 // Manejo de eventos de IPC
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.electron')
@@ -120,6 +185,8 @@ app.whenReady().then(() => {
   ipcMain.handle('crear-proveedor', introProveedor)
   ipcMain.handle('crear-recibo', introRecibo)
   ipcMain.handle('obtener-total-dia', totalDelDia)
+  ipcMain.handle('obtener-informe-compras-mensuales', obtenerInformeComprasMensuales)
+  ipcMain.handle('generar-pdf-informe-compras', handleGenerarPdfInformeCompras)
 
   createWindow()
 
@@ -133,6 +200,7 @@ app.whenReady().then(() => {
   ipcMain.handle('obtener-articulos', obtenerArticulos)
   ipcMain.on('abrir-nuevo-recibo', abrirNuevoRecibo)
   ipcMain.on('abrir-nuevo-proveedor', abrirNuevoProv)
+  ipcMain.on('abrir-ventana-informe-compras', abrirVentanaInformeCompras)
 
   ipcMain.on('cerrar-ventana-recibo', () => {
     if (reciboWindow) {
@@ -144,6 +212,12 @@ app.whenReady().then(() => {
     if (provWindow) {
       provWindow.close()
       provWindow = null
+    }
+  })
+  ipcMain.on('cerrar-ventana-informe', () => {
+    if (informeComprasWindow) {
+      informeComprasWindow.close()
+      // informeComprasWindow se establecerá a null por el evento 'closed' ya definido
     }
   })
   ipcMain.on('cerrar-aplicacion', () => {

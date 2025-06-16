@@ -198,4 +198,52 @@ export const totalDelDia = async (_, fecha) => {
   }
 }
 
+// Función para obtener el informe de compras mensuales
+export const obtenerInformeComprasMensuales = async (_event, { mes, anio }) => {
+  try {
+    const mesFormateado = mes.toString().padStart(2, '0')
+    const anioFormateado = anio.toString()
+
+    const stmtDetallado = db.prepare(`
+      SELECT
+          P.id AS proveedor_id,
+          P.nombre AS proveedor_nombre,
+          P.apellido AS proveedor_apellido,
+          C.id AS compra_id,
+          C.fecha AS compra_fecha,
+          A.nombre AS articulo_nombre,
+          CD.cantidad AS articulo_cantidad,
+          CD.importe AS articulo_importe_sin_iva
+      FROM Compra C
+      JOIN Proveedor P ON C.proveedor_id = P.id
+      JOIN CompraDetalle CD ON C.id = CD.compra_id
+      JOIN Articulo A ON CD.articulo_id = A.id
+      WHERE SUBSTR(C.fecha, 4, 2) = ? 
+        AND SUBSTR(C.fecha, 7, 4) = ?
+      ORDER BY P.apellido, P.nombre, C.id, A.nombre
+    `)
+    const comprasDetalladas = stmtDetallado.all(mesFormateado, anioFormateado)
+
+    const stmtResumen = db.prepare(`
+      SELECT
+          A.nombre AS articulo_nombre,
+          SUM(CD.cantidad) AS total_cantidad,
+          SUM(CD.importe) AS total_importe_sin_iva
+      FROM Compra C
+      JOIN CompraDetalle CD ON C.id = CD.compra_id
+      JOIN Articulo A ON CD.articulo_id = A.id
+      WHERE SUBSTR(C.fecha, 4, 2) = ? 
+        AND SUBSTR(C.fecha, 7, 4) = ?
+      GROUP BY A.nombre
+      ORDER BY A.nombre
+    `)
+    const resumen = stmtResumen.all(mesFormateado, anioFormateado)
+
+    return { comprasDetalladas, resumen }
+  } catch (error) {
+    console.error('Error al obtener informe de compras mensuales:', error)
+    throw error
+  }
+}
+
 export default db

@@ -1,7 +1,6 @@
-import React from 'react'
 import './navbar.css'
 
-const Navbar = ({ onNuevoRecibo, onNuevoProv }) => {
+const Navbar = () => {
   const handleNuevoRecibo = () => {
     if (window.electron && window.electron.ipcRenderer) {
       window.electron.ipcRenderer.send('abrir-nuevo-recibo')
@@ -17,6 +16,12 @@ const Navbar = ({ onNuevoRecibo, onNuevoProv }) => {
   const salirApp = () => {
     if (window.electron && window.electron.ipcRenderer) {
       window.electron.ipcRenderer.send('cerrar-aplicacion')
+    }
+  }
+
+  const handleConsultaCompras = () => {
+    if (window.electron && window.electron.ipcRenderer) {
+      window.electron.ipcRenderer.send('abrir-ventana-informe-compras')
     }
   }
 
@@ -36,16 +41,16 @@ const Navbar = ({ onNuevoRecibo, onNuevoProv }) => {
         </li>
         <li className="navbar-item">
           <div className="navbar-dropdown">
-            <button className="navbar-button">Edición</button>
+            <button className="navbar-button">Utiles</button>
             <div className="navbar-dropdown-content">
-              <button>Editar Recibo</button>
-              <button>Eliminar Recibo</button>
+              <button>Reeimprimir Recibo</button>
+              <button onClick={handleConsultaCompras}>Consultas de Compras Mensuales</button>
             </div>
           </div>
         </li>
-        <li className="navbar-item">
+        {/* <li className="navbar-item">
           <button className="navbar-button">Consulta</button>
-        </li>
+        </li> */}
         <li className="navbar-item">
           <button className="navbar-button" onClick={salirApp}>
             Salir

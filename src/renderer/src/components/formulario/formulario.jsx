@@ -2,12 +2,11 @@ import { useFormik, FieldArray, getIn, FormikProvider } from 'formik'
 import * as Yup from 'yup'
 import { useEffect, useState, useCallback } from 'react'
 import { jsPDF } from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import { ToastContainer, toast } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
 import { generarReciboPDF, obtenerFechaActual } from '../../helpers/formHelper'
 import './formulario.css'
-
-const { ipcRenderer } = window.electron
 
 const STATIC_INITIAL_ITEM = {
   articulo_id: '', // Guardará el ID del artículo
@@ -17,6 +16,8 @@ const STATIC_INITIAL_ITEM = {
   iva: 0.0,
   total: 0.0
 }
+
+const { ipcRenderer } = window.api
 
 const Formulario = ({ onClose }) => {
   const [idFactura, setIdFactura] = useState(1)
@@ -38,6 +39,7 @@ const Formulario = ({ onClose }) => {
       setIsDataLoaded(true)
     } catch (error) {
       console.error('Error al obtener los datos iniciales:', error)
+      toast.error(`Error al obtener los datos iniciales: ${error.message || 'Error desconocido'}`)
     }
   }, [])
 
@@ -59,8 +61,8 @@ const Formulario = ({ onClose }) => {
 
   // Cierra la ventana de carga de recibo
   const handleCerrar = () => {
-    if (window.electron && window.electron.ipcRenderer) {
-      window.electron.ipcRenderer.send('cerrar-ventana-recibo')
+    if (window.api && window.api.ipcRenderer) {
+      window.api.ipcRenderer.send('cerrar-ventana-recibo')
     }
   }
 
@@ -104,7 +106,6 @@ const Formulario = ({ onClose }) => {
         }
 
         const result = await ipcRenderer.invoke('crear-recibo', reciboData)
-        console.log(`Recibo generado con ID: ${result.id}`)
         setIdFactura(result.id + 1)
         resetForm({
           values: {
@@ -125,12 +126,15 @@ const Formulario = ({ onClose }) => {
 
         if (!provSelec) {
           console.error('Proveedor no encontrado para PDF')
+          toast.error('Proveedor no encontrado para generar el PDF.')
           return
         }
 
         generarReciboPDF(result.id, values, provSelec, articulos)
+        toast.success(`Recibo N° ${result.id} generado y PDF creado exitosamente!`)
       } catch (error) {
         console.error('Error al crear el recibo:', error)
+        toast.error(`Error al crear el recibo: ${error.message || 'Error desconocido'}`)
       }
     }
   })
@@ -182,7 +186,6 @@ const Formulario = ({ onClose }) => {
       i === index ? { ...item, [field]: value } : item
     )
     formik.setFieldValue('items', newItems)
-    // Los totales se recalcularán por el useEffect que observa formik.values.items
   }
 
   // Renderiza un indicador de carga o null hasta que los datos estén listos
@@ -192,6 +195,17 @@ const Formulario = ({ onClose }) => {
 
   return (
     <FormikProvider value={formik}>
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
       <form key={idFactura} onSubmit={formik.handleSubmit}>
         <h2 className="titulo">Formulario de Recibo</h2>
         <div className="contForm">
