@@ -79,6 +79,12 @@ const Formulario = ({ onClose }) => {
     enableReinitialize: true, // Permite que el ID se actualice cuando cambia "idFactura"
     validationSchema: Yup.object({
       proveedor: Yup.string().required('El proveedor es obligatorio'),
+      fecha: Yup.string()
+        .matches(
+          /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/,
+          'Formato inválido (DD/MM/AAAA)'
+        )
+        .required('La fecha es obligatoria'),
       items: Yup.array()
         .of(
           Yup.object().shape({
@@ -221,7 +227,8 @@ const Formulario = ({ onClose }) => {
                 ))}
               </select>
               {formik.touched.proveedor && formik.errors.proveedor && (
-                <p>{formik.errors.proveedor}</p>
+                //<p>{formik.errors.proveedor}</p>
+                <p className="error-message">{formik.errors.proveedor}</p>
               )}
             </div>
 
@@ -234,11 +241,17 @@ const Formulario = ({ onClose }) => {
               <label>Fecha</label>
               <input
                 type="text"
-                name="fecha"
-                value={formik.values.fecha}
-                readOnly
-                className="input-readonly"
+                placeholder="DD/MM/AAAA"
+                {...formik.getFieldProps('fecha')}
+
+                // name="fecha"
+                // value={formik.values.fecha}
+                // readOnly
+                // className="input-readonly"
               />
+              {formik.touched.fecha && formik.errors.fecha ? (
+                <p className="error-message">{formik.errors.fecha}</p>
+              ) : null}
             </div>
           </div>
           <FieldArray name="items">

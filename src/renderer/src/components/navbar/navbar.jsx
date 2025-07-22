@@ -40,17 +40,10 @@ const Navbar = () => {
           </button>
         </li>
         <li className="navbar-item">
-          <div className="navbar-dropdown">
-            <button className="navbar-button">Utiles</button>
-            <div className="navbar-dropdown-content">
-              <button>Reeimprimir Recibo</button>
-              <button onClick={handleConsultaCompras}>Consultas de Compras Mensuales</button>
-            </div>
-          </div>
+          <button className="navbar-button" onClick={handleConsultaCompras}>
+            Consultas
+          </button>
         </li>
-        {/* <li className="navbar-item">
-          <button className="navbar-button">Consulta</button>
-        </li> */}
         <li className="navbar-item">
           <button className="navbar-button" onClick={salirApp}>
             Salir
