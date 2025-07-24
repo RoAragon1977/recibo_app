@@ -1,6 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import fs from 'fs/promises'
+import { autoUpdater } from 'electron-updater'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import {
   obtenerProveedor,
@@ -177,6 +178,28 @@ app.whenReady().then(() => {
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
+
+  // --- LÓGICA DE AUTO-ACTUALIZACIÓN ---
+  // Esta línea es la más importante. Busca actualizaciones al iniciar la app
+  // y si encuentra una, la descarga y notifica al usuario cuando está lista.
+  autoUpdater.checkForUpdatesAndNotify()
+
+  // Opcional: Escucha eventos para mostrar mensajes personalizados en tu UI de React.
+  autoUpdater.on('update-available', () => {
+    // Puedes enviar un mensaje a tu ventana principal si quieres mostrar algo.
+    // Ejemplo: mainWindow.webContents.send('update_available');
+    console.log('Actualización disponible y se está descargando.')
+  })
+
+  autoUpdater.on('update-downloaded', () => {
+    // Cuando la actualización está lista, puedes notificar al usuario para que reinicie.
+    const mainWindow = BrowserWindow.getAllWindows()[0]
+    if (mainWindow) {
+      mainWindow.webContents.send('update_downloaded')
+    }
+    console.log('Actualización descargada y lista para instalar.')
+  })
+  // --- FIN DE LA LÓGICA DE AUTO-ACTUALIZACIÓN ---
 
   ipcMain.on('ping', () => console.log('pong'))
 

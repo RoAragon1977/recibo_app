@@ -17,6 +17,34 @@
     "build:mac": "npm run build && electron-builder --mac",
     "build:linux": "npm run build && electron-builder --linux"
   },
+  "build": {
+    "appId": "com.rodrigo.recibo-app",
+    "productName": "Recibo App",
+    "files": [
+      "out/main/**/*",
+      "out/preload/**/*",
+      "out/renderer/**/*"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "icon": "resources/icon.png",
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "mac": {
+      "icon": "resources/icon.png"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "RoAragon1977",
+      "repo": "recibo_app"
+    }
+  },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.1",
     "@electron-toolkit/utils": "^3.0.0",
