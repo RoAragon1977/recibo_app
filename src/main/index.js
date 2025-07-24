@@ -246,6 +246,11 @@ app.whenReady().then(() => {
   ipcMain.on('cerrar-aplicacion', () => {
     app.quit()
   })
+
+  // Este evento lo llamarás desde tu UI de React para reiniciar e instalar la actualización.
+  ipcMain.on('restart_app', () => {
+    autoUpdater.quitAndInstall()
+  })
 })
 
 // Salir cuando se cierran todas las ventanas, excepto en macOS. Allí, es común
