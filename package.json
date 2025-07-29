@@ -21,18 +21,20 @@
     "appId": "com.rodrigo.recibo-app",
     "productName": "Recibo App",
     "files": [
-      "out/main/**/*",
-      "out/preload/**/*",
-      "out/renderer/**/*"
+      "out",
+      "package.json"
     ],
     "directories": {
       "output": "dist"
     },
     "win": {
-      "icon": "resources/icon.png",
-      "target": "nsis"
+      "icon": "resources/icon.png"
     },
     "nsis": {
+      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "shortcutName": "${productName}",
+      "uninstallDisplayName": "${productName}",
+      "createDesktopShortcut": "always",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
     },

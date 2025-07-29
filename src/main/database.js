@@ -1,6 +1,10 @@
 import Database from 'better-sqlite3'
+import { app } from 'electron'
+import { join } from 'path'
 
-const db = new Database('recibos.db', { verbose: console.log })
+const userDataPath = app.getPath('userData')
+const dbPath = join(userDataPath, 'recibos.db')
+const db = new Database(dbPath, { verbose: console.log })
 
 // Crear tablas si no existen
 db.exec(`
