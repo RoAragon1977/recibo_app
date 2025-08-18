@@ -13,6 +13,12 @@ const Navbar = () => {
     }
   }
 
+  const handleModificarProveedor = () => {
+    if (window.electron && window.electron.ipcRenderer) {
+      window.electron.ipcRenderer.send('abrir-modificar-proveedor')
+    }
+  }
+
   const salirApp = () => {
     if (window.electron && window.electron.ipcRenderer) {
       window.electron.ipcRenderer.send('cerrar-aplicacion')
@@ -37,6 +43,11 @@ const Navbar = () => {
         <li className="navbar-item">
           <button className="navbar-button" onClick={handleNuevoProv}>
             Proveedor
+          </button>
+        </li>
+        <li className="navbar-item">
+          <button className="navbar-button" onClick={handleModificarProveedor}>
+            Modificar Proveedor
           </button>
         </li>
         <li className="navbar-item">

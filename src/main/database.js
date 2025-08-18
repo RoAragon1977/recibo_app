@@ -109,6 +109,24 @@ export const introProveedor = async (_, proveedor) => {
   }
 }
 
+// Función para actualizar un proveedor existente
+export const actualizarProveedor = async (_, proveedor) => {
+  try {
+    const stmt = db.prepare(
+      `UPDATE Proveedor SET
+        nombre = ?,
+        apellido = ?,
+        domicilio = ?
+      WHERE id = ?`
+    )
+    stmt.run(proveedor.nombre, proveedor.apellido, proveedor.domicilio, proveedor.id)
+    return { success: true }
+  } catch (error) {
+    console.error('Error al actualizar proveedor:', error)
+    throw error
+  }
+}
+
 // Función para insertar una compra
 const insertarReciboConDetalles = (proveedorId, fecha, items, totalGeneral) => {
   const stmtCompra = db.prepare(`
@@ -165,7 +183,7 @@ export const introRecibo = async (_, recibo) => {
 export const obtenerProveedor = async () => {
   try {
     const proveedores = db
-      .prepare('SELECT id, nombre, apellido, dni FROM Proveedor ORDER BY apellido ASC')
+      .prepare('SELECT id, nombre, apellido, dni, domicilio FROM Proveedor ORDER BY apellido ASC')
       .all()
     return proveedores
   } catch (error) {

@@ -10,7 +10,8 @@ import {
   introRecibo,
   totalDelDia,
   ultimoIdCompra,
-  obtenerInformeComprasMensuales
+  obtenerInformeComprasMensuales,
+  actualizarProveedor
 } from './database'
 
 function createWindow() {
@@ -105,6 +106,40 @@ function abrirNuevoProv() {
 
   provWindow.on('closed', () => {
     provWindow = null
+  })
+}
+
+// Ventana para "Modificar Proveedor"
+let modProvWindow = null
+
+function abrirModificarProv() {
+  if (modProvWindow) {
+    modProvWindow.focus()
+    return
+  }
+
+  modProvWindow = new BrowserWindow({
+    width: 900,
+    height: 800,
+    parent: BrowserWindow.getAllWindows()[0],
+    modal: true,
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false
+    }
+  })
+
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    modProvWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}#modificar-proveedor`)
+  } else {
+    modProvWindow.loadFile(join(__dirname, '../renderer/index.html'), {
+      hash: 'modificar-proveedor'
+    })
+  }
+
+  modProvWindow.on('closed', () => {
+    modProvWindow = null
   })
 }
 
@@ -208,6 +243,7 @@ app.whenReady().then(() => {
   ipcMain.handle('crear-proveedor', introProveedor)
   ipcMain.handle('crear-recibo', introRecibo)
   ipcMain.handle('obtener-total-dia', totalDelDia)
+  ipcMain.handle('actualizar-proveedor', actualizarProveedor)
   ipcMain.handle('obtener-informe-compras-mensuales', obtenerInformeComprasMensuales)
   ipcMain.handle('generar-pdf-informe-compras', handleGenerarPdfInformeCompras)
 
@@ -223,6 +259,7 @@ app.whenReady().then(() => {
   ipcMain.handle('obtener-articulos', obtenerArticulos)
   ipcMain.on('abrir-nuevo-recibo', abrirNuevoRecibo)
   ipcMain.on('abrir-nuevo-proveedor', abrirNuevoProv)
+  ipcMain.on('abrir-modificar-proveedor', abrirModificarProv)
   ipcMain.on('abrir-ventana-informe-compras', abrirVentanaInformeCompras)
 
   ipcMain.on('cerrar-ventana-recibo', () => {
@@ -235,6 +272,12 @@ app.whenReady().then(() => {
     if (provWindow) {
       provWindow.close()
       provWindow = null
+    }
+  })
+  ipcMain.on('cerrar-ventana-mod-proveedor', () => {
+    if (modProvWindow) {
+      modProvWindow.close()
+      modProvWindow = null
     }
   })
   ipcMain.on('cerrar-ventana-informe', () => {

@@ -1,0 +1,112 @@
+/* Estilo unificado con el resto de la aplicación */
+.form-container {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 1.5em;
+  border-radius: 8px;
+  box-shadow: 0 0 20px rgba(0, 255, 204, 0.5);
+  border: 1px solid #00ffcc;
+  max-width: 500px;
+  margin: 40px auto;
+  color: #ffffff; /* Color de texto base para el contenedor */
+}
+
+.form-container h2 {
+  text-align: center;
+  color: #00ffcc;
+  margin-bottom: 1.5em;
+  font-size: 1.8em;
+  text-shadow:
+    0 0 10px #00ffcc,
+    0 0 20px #00ffcc,
+    0 0 30px #00ffcc;
+}
+
+.form-group {
+  margin-bottom: 1em;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5em;
+  color: #00ffcc;
+  font-size: 0.9em;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 0.6em;
+  border: none;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  box-shadow: inset 0 0 5px rgba(0, 255, 204, 0.5);
+  font-size: 0.9em;
+  box-sizing: border-box;
+}
+
+.form-group select {
+  appearance: none;
+  cursor: pointer;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  box-shadow:
+    0 0 10px #00ffcc,
+    0 0 20px #00ffcc,
+    0 0 30px #00ffcc;
+}
+
+.form-group input[readonly] {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #a0a0a0;
+  border: 1px solid rgba(0, 255, 204, 0.2);
+  cursor: not-allowed;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.btn-submit,
+.btn-cancel {
+  padding: 0.6em 1.2em;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1em;
+  transition: background 0.3s ease;
+}
+
+.btn-submit {
+  background: #00ffcc;
+  color: #0f2027;
+}
+
+.btn-submit:hover {
+  background: #00e6b8;
+}
+
+.btn-cancel {
+  background-color: #f44336; /* Rojo se mantiene para acciones de cancelar/salir */
+  color: white;
+}
+
+.btn-cancel:hover {
+  background-color: #da190b;
+}
+
+.mensaje-feedback {
+  text-align: center;
+  margin-top: 20px;
+  padding: 10px;
+  border-radius: 4px;
+  background-color: rgba(0, 255, 204, 0.1);
+  color: #00ffcc;
+  border: 1px solid #00ffcc;
+}

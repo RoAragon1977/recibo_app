@@ -29,15 +29,15 @@ const generarReciboPDF = (reciboId, formValues, proveedorSeleccionado, articulos
 
     doc.text(`${fechaForm}`, margenDer - 30, y, { align: 'right' }) // Fecha
     y += 16
+    // Proveedor a la izquierda y Domicilio a la derecha en la misma línea
     doc.text(
       `Proveedor: ${proveedorSeleccionado.nombre} ${proveedorSeleccionado.apellido}`,
       margenIzq,
       y
     )
+    doc.text(`Domicilio: ${proveedorSeleccionado.domicilio}`, margenDer, y, { align: 'right' })
     y += 8
     doc.text(`DNI: ${proveedorSeleccionado.dni}`, margenIzq, y)
-    y += 8
-    doc.text(`Domicilio: ${proveedorSeleccionado.domicilio}`, margenIzq, y)
     y += 12
 
     // Datos de la tabla
