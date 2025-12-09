@@ -35,6 +35,7 @@
   border: none;
   border-radius: 5px;
   padding: 0.5em 1em;
+  font-family: 'Orbitron', sans-serif;
   cursor: pointer;
   transition: background 0.3s ease;
   font-size: 1em;
@@ -47,6 +48,7 @@
 .navbar-dropdown {
   position: relative;
   display: inline-block;
+  margin-left: 1em;
 }
 
 .navbar-dropdown-content {
@@ -64,6 +66,7 @@
   text-decoration: none;
   display: block;
   background: none;
+  font-family: 'Orbitron', sans-serif;
   border: none;
   width: 100%;
   text-align: left;

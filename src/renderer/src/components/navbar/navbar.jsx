@@ -1,34 +1,8 @@
 import './navbar.css'
 
 const Navbar = () => {
-  const handleNuevoRecibo = () => {
-    if (window.electron && window.electron.ipcRenderer) {
-      window.electron.ipcRenderer.send('abrir-nuevo-recibo')
-    }
-  }
-
-  const handleNuevoProv = () => {
-    if (window.electron && window.electron.ipcRenderer) {
-      window.electron.ipcRenderer.send('abrir-nuevo-proveedor')
-    }
-  }
-
-  const handleModificarProveedor = () => {
-    if (window.electron && window.electron.ipcRenderer) {
-      window.electron.ipcRenderer.send('abrir-modificar-proveedor')
-    }
-  }
-
-  const salirApp = () => {
-    if (window.electron && window.electron.ipcRenderer) {
-      window.electron.ipcRenderer.send('cerrar-aplicacion')
-    }
-  }
-
-  const handleConsultaCompras = () => {
-    if (window.electron && window.electron.ipcRenderer) {
-      window.electron.ipcRenderer.send('abrir-ventana-informe-compras')
-    }
+  const sendIpcMessage = (channel) => {
+    window.api.ipcRenderer.send(channel)
   }
 
   return (
@@ -36,27 +10,32 @@ const Navbar = () => {
       <div className="navbar-brand">Recibo App</div>
       <ul className="navbar-menu">
         <li className="navbar-item">
-          <button className="navbar-button" onClick={handleNuevoRecibo}>
+          <button className="navbar-button" onClick={() => sendIpcMessage('abrir-nuevo-recibo')}>
             Nuevo Recibo
           </button>
         </li>
-        <li className="navbar-item">
-          <button className="navbar-button" onClick={handleNuevoProv}>
-            Proveedor
-          </button>
+        <li className="navbar-dropdown">
+          <button className="navbar-button">Proveedores</button>
+          <div className="navbar-dropdown-content">
+            <button onClick={() => sendIpcMessage('abrir-nuevo-proveedor')}>Nuevo Proveedor</button>
+            <button onClick={() => sendIpcMessage('abrir-modificar-proveedor')}>
+              Modificar Proveedor
+            </button>
+          </div>
+        </li>
+        <li className="navbar-dropdown">
+          <button className="navbar-button">Informes</button>
+          <div className="navbar-dropdown-content">
+            <button onClick={() => sendIpcMessage('abrir-ventana-informe-compras')}>
+              Informe de Compras
+            </button>
+            <button onClick={() => sendIpcMessage('abrir-ventana-informe-contable')}>
+              Informe Contable
+            </button>
+          </div>
         </li>
         <li className="navbar-item">
-          <button className="navbar-button" onClick={handleModificarProveedor}>
-            Modificar Proveedor
-          </button>
-        </li>
-        <li className="navbar-item">
-          <button className="navbar-button" onClick={handleConsultaCompras}>
-            Consultas
-          </button>
-        </li>
-        <li className="navbar-item">
-          <button className="navbar-button" onClick={salirApp}>
+          <button className="navbar-button" onClick={() => sendIpcMessage('cerrar-aplicacion')}>
             Salir
           </button>
         </li>

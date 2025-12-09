@@ -25,7 +25,7 @@ const FormProv = ({ onClose }) => {
       nombre: Yup.string().required('El nombre es obligatorio'),
       apellido: Yup.string().required('El apellido es obligatorio'),
       dni: Yup.string()
-        .matches(/^\d{7,8}$/, 'El DNI debe tener 7 u 8 dígitos')
+        .matches(/^(\d{7,8}|\d{11})$/, 'El DNI/CUIT debe tener 7, 8 u 11 dígitos')
         .required('El DNI es obligatorio')
         .transform((value) => (value.length === 7 ? `0${value}` : value)),
       domicilio: Yup.string().required('El domicilio es obligatorio')
@@ -78,7 +78,7 @@ const FormProv = ({ onClose }) => {
           </div>
 
           <div className="unidad-input">
-            <label>DNI</label>
+            <label>DNI O CUIT</label>
             <input type="text" name="dni" {...formik.getFieldProps('dni')} />
             {formik.touched.dni && formik.errors.dni && <p>{formik.errors.dni}</p>}
           </div>

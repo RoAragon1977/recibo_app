@@ -268,4 +268,33 @@ export const obtenerInformeComprasMensuales = async (_event, { mes, anio }) => {
   }
 }
 
+export const obtenerInformeContable = async (_event, { mes, anio }) => {
+  try {
+    const mesFormateado = mes.toString().padStart(2, '0')
+    const anioFormateado = anio.toString()
+
+    const stmt = db.prepare(`
+      SELECT
+          C.id AS compra_id,
+          C.fecha,
+          P.nombre || ' ' || P.apellido AS proveedor,
+          P.dni,
+          SUM(CD.importe) AS subtotal,
+          SUM(CD.iva) AS iva,
+          C.total_general AS total
+      FROM Compra C
+      JOIN Proveedor P ON C.proveedor_id = P.id
+      JOIN CompraDetalle CD ON C.id = CD.compra_id
+      WHERE SUBSTR(C.fecha, 4, 2) = ? 
+        AND SUBSTR(C.fecha, 7, 4) = ?
+      GROUP BY C.id
+      ORDER BY C.fecha, C.id
+    `)
+    return stmt.all(mesFormateado, anioFormateado)
+  } catch (error) {
+    console.error('Error al obtener informe contable:', error)
+    throw error
+  }
+}
+
 export default db

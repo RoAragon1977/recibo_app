@@ -11,7 +11,8 @@ import {
   totalDelDia,
   ultimoIdCompra,
   obtenerInformeComprasMensuales,
-  actualizarProveedor
+  actualizarProveedor,
+  obtenerInformeContable
 } from './database'
 
 function createWindow() {
@@ -175,6 +176,42 @@ function abrirVentanaInformeCompras() {
   })
 }
 
+ipcMain.on('abrir-ventana-informe-contable', () => {
+  if (informeContableWindow) {
+    informeContableWindow.focus()
+    return
+  }
+  abrirVentanaInformeContable()
+})
+
+// Ventana para "Informe Contable"
+let informeContableWindow = null
+
+function abrirVentanaInformeContable() {
+  if (informeContableWindow) {
+    informeContableWindow.focus()
+    return
+  }
+
+  informeContableWindow = new BrowserWindow({
+    fullscreen: true,
+    parent: BrowserWindow.getAllWindows()[0],
+    modal: true,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false
+    }
+  })
+
+  const urlHash = '#informe-contable-ventana'
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    informeContableWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}${urlHash}`)
+  } else {
+    informeContableWindow.loadFile(join(__dirname, '../renderer/index.html'), { hash: urlHash })
+  }
+
+  informeContableWindow.on('closed', () => (informeContableWindow = null))
+}
 // Manejador para generar PDF del informe de compras
 async function handleGenerarPdfInformeCompras(_event, { mes, anio }) {
   if (!informeComprasWindow) {
@@ -246,6 +283,7 @@ app.whenReady().then(() => {
   ipcMain.handle('actualizar-proveedor', actualizarProveedor)
   ipcMain.handle('obtener-informe-compras-mensuales', obtenerInformeComprasMensuales)
   ipcMain.handle('generar-pdf-informe-compras', handleGenerarPdfInformeCompras)
+  ipcMain.handle('obtener-informe-contable', obtenerInformeContable)
 
   createWindow()
 
@@ -286,6 +324,12 @@ app.whenReady().then(() => {
       // informeComprasWindow se establecerá a null por el evento 'closed' ya definido
     }
   })
+  ipcMain.on('cerrar-ventana-informe-contable', () => {
+    if (informeContableWindow) {
+      informeContableWindow.close()
+    }
+  })
+
   ipcMain.on('cerrar-aplicacion', () => {
     app.quit()
   })

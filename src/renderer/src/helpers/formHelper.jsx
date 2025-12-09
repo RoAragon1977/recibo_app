@@ -140,4 +140,57 @@ const agruparDatosInforme = (datosPlanos) => {
   }))
 }
 
-export { obtenerFechaActual, generarReciboPDF, agruparDatosInforme }
+const generarInformeContablePDF = (mes, anio, datos, meses) => {
+  const doc = new jsPDF({ orientation: 'landscape', format: 'a4' })
+  const mesStr = meses.find((m) => m.value === mes)?.label || mes
+
+  doc.setFontSize(16)
+  doc.text(`Informe Contable - ${mesStr} ${anio}`, 14, 20)
+
+  const columns = [
+    'Fecha',
+    'Nº de comprobante',
+    'Proveedor',
+    'Nº de DNI',
+    'Subtotal',
+    'IVA del Subtotal',
+    'Total a pagar'
+  ]
+
+  const data = datos.map((recibo) => [
+    recibo.fecha,
+    recibo.compra_id,
+    recibo.proveedor,
+    recibo.dni,
+    `$${recibo.subtotal.toFixed(2)}`,
+    `$${recibo.iva.toFixed(2)}`,
+    `$${recibo.total.toFixed(2)}`
+  ])
+
+  const totalGeneral = datos.reduce((acc, recibo) => acc + recibo.total, 0)
+
+  autoTable(doc, {
+    startY: 30,
+    head: [columns],
+    body: data,
+    theme: 'grid',
+    headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+    columnStyles: {
+      4: { halign: 'right' },
+      5: { halign: 'right' },
+      6: { halign: 'right' }
+    },
+    didDrawPage: () => {
+      doc.setFontSize(12)
+      doc.text(
+        `Total General del Mes: $${totalGeneral.toFixed(2)}`,
+        14,
+        doc.internal.pageSize.height - 10
+      )
+    }
+  })
+
+  doc.save(`informe_contable_${mes}_${anio}.pdf`)
+}
+
+export { obtenerFechaActual, generarReciboPDF, agruparDatosInforme, generarInformeContablePDF }
