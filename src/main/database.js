@@ -297,4 +297,36 @@ export const obtenerInformeContable = async (_event, { mes, anio }) => {
   }
 }
 
+export const obtenerComprasParaIVADigital = async (_event, { startDate, endDate }) => {
+  try {
+    // La consulta une las compras con sus detalles y proveedores
+    // y filtra por el rango de fechas.
+    // Se convierte la fecha de la DB (DD/MM/YYYY) a un formato comparable (YYYY/MM/DD)
+    // para que el filtrado por rango de fechas funcione correctamente.
+    const stmt = db.prepare(`
+      SELECT
+        C.id AS compra_id,
+        C.fecha,
+        C.total_general,
+        P.dni,
+        P.nombre AS proveedor_nombre,
+        P.apellido AS proveedor_apellido,
+        CD.importe,
+        CD.iva
+      FROM Compra C
+      JOIN Proveedor P ON C.proveedor_id = P.id
+      JOIN CompraDetalle CD ON C.id = CD.compra_id
+      WHERE 
+        SUBSTR(C.fecha, 7, 4) || '-' || SUBSTR(C.fecha, 4, 2) || '-' || SUBSTR(C.fecha, 1, 2) >= ? AND
+        SUBSTR(C.fecha, 7, 4) || '-' || SUBSTR(C.fecha, 4, 2) || '-' || SUBSTR(C.fecha, 1, 2) <= ?
+      ORDER BY C.fecha, C.id
+    `)
+
+    return stmt.all(startDate, endDate)
+  } catch (error) {
+    console.error('Error al obtener compras para IVA Digital:', error)
+    throw error
+  }
+}
+
 export default db

@@ -34,6 +34,14 @@ const Navbar = () => {
             </button>
           </div>
         </li>
+        <li className="navbar-dropdown">
+          <button className="navbar-button">Libro IVA Digital</button>
+          <div className="navbar-dropdown-content">
+            <button onClick={() => sendIpcMessage('abrir-ventana-exportar-iva')}>
+              Exportar IVA Reciclados
+            </button>
+          </div>
+        </li>
         <li className="navbar-item">
           <button className="navbar-button" onClick={() => sendIpcMessage('cerrar-aplicacion')}>
             Salir

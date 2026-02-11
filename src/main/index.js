@@ -12,7 +12,8 @@ import {
   ultimoIdCompra,
   obtenerInformeComprasMensuales,
   actualizarProveedor,
-  obtenerInformeContable
+  obtenerInformeContable,
+  obtenerComprasParaIVADigital
 } from './database'
 
 function createWindow() {
@@ -212,6 +213,38 @@ function abrirVentanaInformeContable() {
 
   informeContableWindow.on('closed', () => (informeContableWindow = null))
 }
+
+// Ventana para "Exportar IVA Reciclados"
+let exportarIvaWindow = null
+
+function abrirVentanaExportarIva() {
+  if (exportarIvaWindow) {
+    exportarIvaWindow.focus()
+    return
+  }
+
+  exportarIvaWindow = new BrowserWindow({
+    width: 900,
+    height: 600,
+    parent: BrowserWindow.getAllWindows()[0],
+    modal: true,
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false
+    }
+  })
+
+  const urlHash = '#exportar-iva-reciclados'
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    exportarIvaWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}${urlHash}`)
+  } else {
+    exportarIvaWindow.loadFile(join(__dirname, '../renderer/index.html'), { hash: urlHash })
+  }
+
+  exportarIvaWindow.on('closed', () => (exportarIvaWindow = null))
+}
+
 // Manejador para generar PDF del informe de compras
 async function handleGenerarPdfInformeCompras(_event, { mes, anio }) {
   if (!informeComprasWindow) {
@@ -284,6 +317,10 @@ app.whenReady().then(() => {
   ipcMain.handle('obtener-informe-compras-mensuales', obtenerInformeComprasMensuales)
   ipcMain.handle('generar-pdf-informe-compras', handleGenerarPdfInformeCompras)
   ipcMain.handle('obtener-informe-contable', obtenerInformeContable)
+  ipcMain.handle('generar-archivos-iva-reciclados', async (_event, args) => {
+    console.log('Main process received args for IVA Digital export:', args)
+    return obtenerComprasParaIVADigital(_event, args)
+  })
 
   createWindow()
 
@@ -299,6 +336,7 @@ app.whenReady().then(() => {
   ipcMain.on('abrir-nuevo-proveedor', abrirNuevoProv)
   ipcMain.on('abrir-modificar-proveedor', abrirModificarProv)
   ipcMain.on('abrir-ventana-informe-compras', abrirVentanaInformeCompras)
+  ipcMain.on('abrir-ventana-exportar-iva', abrirVentanaExportarIva)
 
   ipcMain.on('cerrar-ventana-recibo', () => {
     if (reciboWindow) {
@@ -327,6 +365,11 @@ app.whenReady().then(() => {
   ipcMain.on('cerrar-ventana-informe-contable', () => {
     if (informeContableWindow) {
       informeContableWindow.close()
+    }
+  })
+  ipcMain.on('cerrar-ventana-exportar-iva', () => {
+    if (exportarIvaWindow) {
+      exportarIvaWindow.close()
     }
   })
 
