@@ -1,7 +1,6 @@
 import { useFormik, FieldArray, getIn, FormikProvider } from 'formik'
 import * as Yup from 'yup'
 import { useEffect, useState, useCallback } from 'react'
-import { jsPDF } from 'jspdf'
 import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 
@@ -19,7 +18,7 @@ const STATIC_INITIAL_ITEM = {
 
 const { ipcRenderer } = window.api
 
-const Formulario = ({ onClose }) => {
+const Formulario = () => {
   const [idFactura, setIdFactura] = useState(1)
   const [proveedores, setProveedores] = useState([])
   const [articulos, setArticulos] = useState([])
@@ -183,7 +182,6 @@ const Formulario = ({ onClose }) => {
     if (formik.values.totalGeneral !== parseFloat(newTotalGeneralCalc.toFixed(2))) {
       formik.setFieldValue('totalGeneral', parseFloat(newTotalGeneralCalc.toFixed(2)), false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formik.values.items]) // Solo se ejecuta si el array 'items' o su contenido cambia.
 
   // Manejador para cambios en campos de items

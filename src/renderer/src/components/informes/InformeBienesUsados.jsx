@@ -60,7 +60,7 @@ const InformeBienesUsados = () => {
         draggable
         pauseOnHover
       />
-      <h2>Generar Archivo para "Libro IVA Digital - Bienes Usados"</h2>
+      <h2>Generar Archivo para &quot;Libro IVA Digital - Bienes Usados&quot;</h2>
       <div className="filtros-container">
         <div className="filtro-item">
           <label htmlFor="mes">Mes:</label>

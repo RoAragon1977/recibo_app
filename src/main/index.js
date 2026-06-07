@@ -1,6 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import fs from 'fs/promises'
+import * as XLSX from 'xlsx'
 import { autoUpdater } from 'electron-updater'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import {
@@ -13,12 +14,15 @@ import {
   obtenerInformeComprasMensuales,
   actualizarProveedor,
   obtenerInformeContable,
-  obtenerComprasParaIVADigital
+  obtenerComprasParaIVADigital,
+  importarComprasMasivas
 } from './database'
+
+let mainWindow = null
 
 function createWindow() {
   // crea la ventana principal.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     show: false,
     autoHideMenuBar: true,
     webPreferences: {
@@ -54,7 +58,7 @@ function abrirNuevoRecibo() {
   reciboWindow = new BrowserWindow({
     width: 900,
     height: 800,
-    parent: BrowserWindow.getAllWindows()[0],
+    parent: mainWindow,
     modal: true,
     fullscreen: true,
     autoHideMenuBar: true,
@@ -89,7 +93,7 @@ function abrirNuevoProv() {
   provWindow = new BrowserWindow({
     width: 900,
     height: 800,
-    parent: BrowserWindow.getAllWindows()[0],
+    parent: mainWindow,
     modal: true,
     autoHideMenuBar: true,
     webPreferences: {
@@ -123,7 +127,7 @@ function abrirModificarProv() {
   modProvWindow = new BrowserWindow({
     width: 900,
     height: 800,
-    parent: BrowserWindow.getAllWindows()[0],
+    parent: mainWindow,
     modal: true,
     autoHideMenuBar: true,
     webPreferences: {
@@ -156,7 +160,7 @@ function abrirVentanaInformeCompras() {
 
   informeComprasWindow = new BrowserWindow({
     fullscreen: true,
-    parent: BrowserWindow.getAllWindows()[0], // Opcional: hacerlo hijo de la ventana principal
+    parent: mainWindow,
     modal: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -196,7 +200,7 @@ function abrirVentanaInformeContable() {
 
   informeContableWindow = new BrowserWindow({
     fullscreen: true,
-    parent: BrowserWindow.getAllWindows()[0],
+    parent: mainWindow,
     modal: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -226,7 +230,7 @@ function abrirVentanaExportarIva() {
   exportarIvaWindow = new BrowserWindow({
     width: 900,
     height: 600,
-    parent: BrowserWindow.getAllWindows()[0],
+    parent: mainWindow,
     modal: true,
     autoHideMenuBar: true,
     webPreferences: {
@@ -318,8 +322,31 @@ app.whenReady().then(() => {
   ipcMain.handle('generar-pdf-informe-compras', handleGenerarPdfInformeCompras)
   ipcMain.handle('obtener-informe-contable', obtenerInformeContable)
   ipcMain.handle('generar-archivos-iva-reciclados', async (_event, args) => {
-    console.log('Main process received args for IVA Digital export:', args)
     return obtenerComprasParaIVADigital(_event, args)
+  })
+
+  // Handler para importar desde Excel
+  ipcMain.handle('importar-excel', async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Seleccionar Excel de Compras',
+      properties: ['openFile'],
+      filters: [{ name: 'Excel', extensions: ['xlsx', 'xls'] }]
+    })
+
+    if (canceled || filePaths.length === 0) return { success: false, message: 'Cancelado' }
+
+    try {
+      const buffer = await fs.readFile(filePaths[0])
+      const workbook = XLSX.read(buffer, { type: 'buffer' })
+      const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {
+        raw: false, // Esto convierte fechas y números a strings según el formato de la celda
+        dateNF: 'dd/mm/yyyy', // Especificamos el formato de fecha esperado
+        defval: '' // Asegura que las celdas vacías no sean undefined
+      })
+      return await importarComprasMasivas(null, data)
+    } catch (error) {
+      return { success: false, message: error.message }
+    }
   })
 
   createWindow()

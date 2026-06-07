@@ -1,7 +1,9 @@
 <<<<<<< HEAD
+
 # recibo_app
-Programa generador de recibos para la compra de desperdicio de papeles y carton
-=======
+
+# Programa generador de recibos para la compra de desperdicio de papeles y carton
+
 # recibo-app
 
 An Electron application with React
@@ -36,4 +38,5 @@ $ npm run build:mac
 # For Linux
 $ npm run build:linux
 ```
->>>>>>> a988b83 (configuracion inicial y creación de formulario)
+
+> > > > > > > a988b83 (configuracion inicial y creación de formulario)

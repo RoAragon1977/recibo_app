@@ -7,7 +7,7 @@ import './formulario.css'
 
 const { ipcRenderer } = window.api
 
-const FormProv = ({ onClose }) => {
+const FormProv = () => {
   const handleCerrar = () => {
     if (window.api && window.api.ipcRenderer) {
       window.api.ipcRenderer.send('cerrar-ventana-proveedor')

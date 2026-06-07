@@ -1,10 +1,13 @@
 import Database from 'better-sqlite3'
 import { app } from 'electron'
 import { join } from 'path'
+import { is } from '@electron-toolkit/utils'
 
-const userDataPath = app.getPath('userData')
-const dbPath = join(userDataPath, 'recibos.db')
-const db = new Database(dbPath, { verbose: console.log })
+const dbPath = is.dev
+  ? join(process.cwd(), 'recibos.db')
+  : join(app.getPath('userData'), 'recibos.db')
+
+const db = new Database(dbPath)
 
 // Crear tablas si no existen
 db.exec(`
@@ -167,10 +170,10 @@ const insertarReciboConDetalles = (proveedorId, fecha, items, totalGeneral) => {
 export const introRecibo = async (_, recibo) => {
   try {
     const reciboId = insertarReciboConDetalles(
-      recibo.proveedorId,
+      Number(recibo.proveedorId),
       recibo.fecha,
       recibo.items,
-      recibo.totalGeneral
+      parseFloat(recibo.totalGeneral)
     )
     return { id: reciboId }
   } catch (error) {
@@ -326,6 +329,117 @@ export const obtenerComprasParaIVADigital = async (_event, { startDate, endDate 
   } catch (error) {
     console.error('Error al obtener compras para IVA Digital:', error)
     throw error
+  }
+}
+
+/**
+ * Importa compras masivas agrupándolas por DNI y Fecha.
+ * Se asume que el Excel tiene los encabezados:
+ * fecha, dni, nombre, apellido, domicilio, articulo, cantidad, precio_unitario
+ */
+/**
+ * Normaliza una cadena: quita acentos, convierte a minúsculas y elimina espacios.
+ */
+const normalizeString = (str) =>
+  (str || '')
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+
+export const importarComprasMasivas = async (_, rows) => {
+  if (rows.length === 0) {
+    return { success: false, message: 'El archivo Excel está vacío.' }
+  }
+
+  const articulosNoEncontrados = new Set()
+
+  // Obtenemos el mapa de artículos para convertir nombres a IDs
+  const articulos = db.prepare('SELECT id, nombre FROM Articulo').all()
+  const articuloMap = new Map(articulos.map((a) => [normalizeString(a.nombre), a.id]))
+
+  const transaction = db.transaction((data) => {
+    // 1. Agrupamos por DNI + Fecha para generar un solo recibo por transacción real
+    const agrupadas = data.reduce((acc, row, index) => {
+      // Normalizar las claves de la fila a minúsculas
+      const normalizedRow = {}
+      for (const key in row) {
+        normalizedRow[key.toLowerCase().trim()] = row[key]
+      }
+
+      const dni = (normalizedRow.dni || '').toString().trim()
+      const fecha = normalizedRow.fecha
+
+      if (!dni || !fecha) {
+        console.warn(`Fila ${index + 2} omitida: Falta DNI o Fecha.`, { dni, fecha })
+        return acc
+      }
+
+      const key = `${dni}-${fecha}`
+      if (!acc[key]) {
+        acc[key] = {
+          prov: {
+            nombre: normalizedRow.nombre,
+            apellido: normalizedRow.apellido,
+            dni,
+            domicilio: normalizedRow.domicilio
+          },
+          fecha: fecha,
+          items: []
+        }
+      }
+
+      const nombreArt = normalizeString(normalizedRow.articulo)
+      const articulo_id = articuloMap.get(nombreArt)
+
+      if (articulo_id) {
+        const cantidad = parseFloat(normalizedRow.cantidad) || 0
+        const precioU = parseFloat(normalizedRow.precio_unitario) || 0
+        const importe = cantidad * precioU
+        const iva = importe * 0.21
+        acc[key].items.push({
+          articulo_id,
+          cantidad,
+          precio_unitario: precioU,
+          importe,
+          iva,
+          total: importe + iva
+        })
+      } else {
+        if (normalizedRow.articulo) {
+          articulosNoEncontrados.add(normalizedRow.articulo)
+        } else {
+          console.warn(`Fila ${index + 2}: La columna "articulo" está vacía.`)
+        }
+      }
+      return acc
+    }, {})
+
+    // 2. Insertamos cada grupo en la base de datos
+    if (articulosNoEncontrados.size > 0) {
+      console.warn('Artículos no reconocidos:', Array.from(articulosNoEncontrados))
+    }
+
+    let insertados = 0
+    for (const key in agrupadas) {
+      const c = agrupadas[key]
+      if (c.items.length === 0) continue
+
+      const provId = insertarProveedor(c.prov.nombre, c.prov.apellido, c.prov.dni, c.prov.domicilio)
+      const totalGral = c.items.reduce((sum, i) => sum + i.total, 0)
+      insertarReciboConDetalles(provId, c.fecha, c.items, totalGral)
+      insertados++
+    }
+    return insertados
+  })
+
+  try {
+    const count = transaction(rows)
+    return { success: true, count }
+  } catch (error) {
+    console.error('Error crítico en importación:', error)
+    return { success: false, message: error.message }
   }
 }
 
