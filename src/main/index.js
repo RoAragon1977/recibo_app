@@ -15,7 +15,9 @@ import {
   actualizarProveedor,
   obtenerInformeContable,
   obtenerComprasParaIVADigital,
-  importarComprasMasivas
+  importarComprasMasivas,
+  obtenerDetalleCompra,
+  generarArchivoBienesUsados
 } from './database'
 
 let mainWindow = null
@@ -324,6 +326,8 @@ app.whenReady().then(() => {
   ipcMain.handle('generar-archivos-iva-reciclados', async (_event, args) => {
     return obtenerComprasParaIVADigital(_event, args)
   })
+  ipcMain.handle('obtener-detalle-compra', obtenerDetalleCompra)
+  ipcMain.handle('generar-archivo-bienes-usados', generarArchivoBienesUsados)
 
   // Handler para importar desde Excel
   ipcMain.handle('importar-excel', async () => {
@@ -337,10 +341,32 @@ app.whenReady().then(() => {
 
     try {
       const buffer = await fs.readFile(filePaths[0])
-      const workbook = XLSX.read(buffer, { type: 'buffer' })
-      const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {
-        raw: false, // Esto convierte fechas y números a strings según el formato de la celda
-        dateNF: 'dd/mm/yyyy', // Especificamos el formato de fecha esperado
+      const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true })
+      const sheet = workbook.Sheets[workbook.SheetNames[0]]
+
+      // Recorrer celdas para convertir Dates a string DD/MM/AAAA manualmente
+      // Esto evita la inversión DD/MM ↔ MM/DD que causa JavaScript Date
+      if (sheet['!ref']) {
+        const range = XLSX.utils.decode_range(sheet['!ref'])
+        for (let R = range.s.r; R <= range.e.r; R++) {
+          for (let C = range.s.c; C <= range.e.c; C++) {
+            const addr = XLSX.utils.encode_cell({ r: R, c: C })
+            const cell = sheet[addr]
+            if (cell && cell.t === 'd' && cell.v instanceof Date) {
+              const d = cell.v
+              const dia = String(d.getDate()).padStart(2, '0')
+              const mes = String(d.getMonth() + 1).padStart(2, '0')
+              const anio = d.getFullYear()
+              cell.t = 's' // Cambiar tipo a string
+              cell.v = `${dia}/${mes}/${anio}`
+              cell.w = cell.v
+            }
+          }
+        }
+      }
+
+      const data = XLSX.utils.sheet_to_json(sheet, {
+        raw: false,
         defval: '' // Asegura que las celdas vacías no sean undefined
       })
       return await importarComprasMasivas(null, data)
@@ -395,6 +421,11 @@ app.whenReady().then(() => {
     }
   })
   ipcMain.on('cerrar-ventana-exportar-iva', () => {
+    if (exportarIvaWindow) {
+      exportarIvaWindow.close()
+    }
+  })
+  ipcMain.on('cerrar-ventana-informe-bienes-usados', () => {
     if (exportarIvaWindow) {
       exportarIvaWindow.close()
     }

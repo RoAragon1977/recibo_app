@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ToastContainer, toast } from 'react-toastify'
 
-import { agruparDatosInforme } from '../../helpers/formHelper'
+import { agruparDatosInforme, generarReciboPDF } from '../../helpers/formHelper'
 import './compras.css'
+
+const { ipcRenderer } = window.api
 
 const ComprasMensuales = () => {
   const anioActual = new Date().getFullYear()
@@ -10,6 +12,20 @@ const ComprasMensuales = () => {
   const [anio, setAnio] = useState(anioActual.toString())
   const [datosInforme, setDatosInforme] = useState(null)
   const [cargando, setCargando] = useState(false)
+  const [articulosList, setArticulosList] = useState([])
+
+  // Cargar lista de artículos necesarios para generar el PDF
+  useEffect(() => {
+    const fetchArticulos = async () => {
+      try {
+        const list = await ipcRenderer.invoke('obtener-articulos')
+        setArticulosList(list || [])
+      } catch (error) {
+        console.error('Error al obtener los artículos:', error)
+      }
+    }
+    fetchArticulos()
+  }, [])
 
   const handleGenerarInforme = async () => {
     if (!mes || !anio) {
@@ -34,7 +50,7 @@ const ComprasMensuales = () => {
         return
       }
 
-      const data = await window.api.ipcRenderer.invoke('obtener-informe-compras-mensuales', {
+      const data = await ipcRenderer.invoke('obtener-informe-compras-mensuales', {
         mes: mesNumerico,
         anio: anioNumerico
       })
@@ -56,7 +72,7 @@ const ComprasMensuales = () => {
     }
     toast.info('Generando PDF...')
     try {
-      const resultado = await window.api.ipcRenderer.invoke('generar-pdf-informe-compras', {
+      const resultado = await ipcRenderer.invoke('generar-pdf-informe-compras', {
         mes,
         anio
       })
@@ -71,9 +87,26 @@ const ComprasMensuales = () => {
     }
   }
 
+  const handleGenerarReciboPDF = async (compraId) => {
+    try {
+      toast.info('Generando PDF del recibo...')
+      const result = await ipcRenderer.invoke('obtener-detalle-compra', { compraId })
+      if (result.success) {
+        const { formValues, proveedorSeleccionado } = result
+        generarReciboPDF(compraId, formValues, proveedorSeleccionado, articulosList)
+        toast.success(`PDF del recibo #${compraId} generado correctamente.`)
+      } else {
+        toast.error('No se pudieron obtener los detalles de este recibo.')
+      }
+    } catch (error) {
+      console.error('Error al regenerar PDF:', error)
+      toast.error(`Error al generar el PDF: ${error.message}`)
+    }
+  }
+
   const handleCerrarVentana = () => {
-    if (window.api && window.api.ipcRenderer) {
-      window.api.ipcRenderer.send('cerrar-ventana-informe')
+    if (ipcRenderer) {
+      ipcRenderer.send('cerrar-ventana-informe')
     }
   }
 
@@ -150,9 +183,34 @@ const ComprasMensuales = () => {
                 </h4>
                 {datosProveedor.compras.map((compra, compraIdx) => (
                   <div key={compraIdx} className="compra-details">
-                    <h5>
-                      Compra ID: {compra.compra_id} - Fecha: {compra.compra_fecha}
-                    </h5>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: '8px'
+                      }}
+                    >
+                      <h5 style={{ margin: 0 }}>
+                        Compra ID: {compra.compra_id} - Fecha: {compra.compra_fecha}
+                      </h5>
+                      <button
+                        onClick={() => handleGenerarReciboPDF(compra.compra_id)}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                          backgroundColor: '#27ae60',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '3px',
+                          height: 'auto',
+                          margin: 0
+                        }}
+                      >
+                        📄 Guardar PDF
+                      </button>
+                    </div>
                     <table>
                       <thead>
                         <tr>
@@ -208,3 +266,4 @@ const ComprasMensuales = () => {
   )
 }
 export default ComprasMensuales
+

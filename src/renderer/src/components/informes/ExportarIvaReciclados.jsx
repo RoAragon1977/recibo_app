@@ -49,8 +49,8 @@ function ExportarIvaReciclados() {
         toast.success(`Importación exitosa: ${result.count} recibos importados.`)
         setMessage(`Importación exitosa: ${result.count} recibos importados.`)
       } else {
-        toast.error(`Error en la importación: ${result.message}`)
-        setMessage(`Error en la importación: ${result.message}`)
+        toast.error('Error en la importación. Revise los detalles abajo.')
+        setMessage(result.message)
       }
     } catch (error) {
       toast.error(`Error al importar Excel: ${error.message}`)
@@ -86,7 +86,9 @@ function ExportarIvaReciclados() {
           {loading ? 'Importando...' : 'Importar Recibos desde Excel'}
         </button>
       </div>
-      <div className="informe-display">{message && <p>{message}</p>}</div>
+      <div className="informe-display">
+        {message && <pre style={{ whiteSpace: 'pre-wrap', textAlign: 'left' }}>{message}</pre>}
+      </div>
     </div>
   )
 }
