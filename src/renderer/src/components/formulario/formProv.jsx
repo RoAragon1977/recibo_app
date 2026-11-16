@@ -22,13 +22,19 @@ const FormProv = () => {
       domicilio: ''
     },
     validationSchema: Yup.object({
-      nombre: Yup.string().required('El nombre es obligatorio'),
-      apellido: Yup.string().required('El apellido es obligatorio'),
+      nombre: Yup.string()
+        .matches(/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 ]+$/, 'Solo letras y números')
+        .required('El nombre es obligatorio'),
+      apellido: Yup.string()
+        .matches(/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 ]+$/, 'Solo letras y números')
+        .required('El apellido es obligatorio'),
       dni: Yup.string()
         .matches(/^(\d{7,8}|\d{11})$/, 'El DNI/CUIT debe tener 7, 8 u 11 dígitos')
         .required('El DNI es obligatorio')
         .transform((value) => (value.length === 7 ? `0${value}` : value)),
-      domicilio: Yup.string().required('El domicilio es obligatorio')
+      domicilio: Yup.string()
+        .matches(/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 ]+$/, 'Solo letras y números')
+        .required('El domicilio es obligatorio')
     }),
     onSubmit: async (values, { resetForm }) => {
       try {

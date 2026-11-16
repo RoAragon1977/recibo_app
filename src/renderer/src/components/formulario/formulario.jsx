@@ -5,6 +5,7 @@ import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 
 import { generarReciboPDF, obtenerFechaActual } from '../../helpers/formHelper'
+import SearchableSelect from '../SearchableSelect'
 import './formulario.css'
 
 const STATIC_INITIAL_ITEM = {
@@ -216,16 +217,19 @@ const Formulario = () => {
           <div className="conten-proveedor">
             <div className="unidad-input">
               <label>Proveedor</label>
-              <select className="prov" name="proveedor" {...formik.getFieldProps('proveedor')}>
-                <option value="">Seleccione un proveedor</option>
-                {proveedores.map((proveedor) => (
-                  <option key={proveedor.id} value={proveedor.id}>
-                    {proveedor.nombre} {proveedor.apellido}
-                  </option>
-                ))}
-              </select>
+              <SearchableSelect
+                name="proveedor"
+                placeholder="Escriba para buscar proveedor..."
+                options={proveedores.map((p) => ({
+                  id: p.id,
+                  label: `${p.apellido} ${p.nombre}`.trim(),
+                  info: p.dni
+                }))}
+                value={formik.values.proveedor}
+                onChange={(id) => formik.setFieldValue('proveedor', id)}
+                onBlur={formik.handleBlur}
+              />
               {formik.touched.proveedor && formik.errors.proveedor && (
-                //<p>{formik.errors.proveedor}</p>
                 <p className="error-message">{formik.errors.proveedor}</p>
               )}
             </div>

@@ -67,6 +67,63 @@ if (verificarArticulos.count === 0) {
   insertMany(articulosAPrecargar)
 }
 
+// ===== Helpers de validación y normalización (backend = fuente de verdad) =====
+
+// Normaliza DNI: números de 7 dígitos se rellenan a 8 con cero a la izquierda.
+// CUIT (11 dígitos) queda igual. Solo afecta a registros nuevos.
+const normalizarDni = (dni) => {
+  const limpio = (dni ?? '').toString().replace(/\D/g, '')
+  if (limpio.length === 7) return limpio.padStart(8, '0')
+  return limpio
+}
+
+const DNI_REGEX = /^\d{8}$|^\d{11}$/
+
+// Redondeo seguro a 2 decimales (evita artefactos de punto flotante)
+const redondear2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100
+
+const esTextoNoVacio = (v) => typeof v === 'string' && v.trim().length > 0
+
+// Normaliza texto libre (nombre, apellido, domicilio):
+// mayúsculas, sin acentos, solo letras/números/espacios.
+const normalizarTexto = (str) =>
+  (str ?? '')
+    .toString()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // acentos
+    .replace(/ñ/g, 'N')
+    .replace(/Ñ/g, 'N')
+    .toUpperCase()
+    .replace(/[^A-Z0-9 ]/g, '') // quita signos y caracteres especiales
+    .replace(/\s+/g, ' ')
+    .trim()
+
+const validarDatosProveedor = (p) => {
+  const errores = []
+  if (!esTextoNoVacio(p.nombre)) errores.push('nombre vacío')
+  if (!esTextoNoVacio(p.apellido)) errores.push('apellido vacío')
+  if (!DNI_REGEX.test(normalizarDni(p.dni))) errores.push('DNI/CUIT inválido')
+  if (!esTextoNoVacio(p.domicilio)) errores.push('domicilio vacío')
+  // Si tras normalizar el campo queda vacío, solo tenía caracteres especiales
+  if (esTextoNoVacio(p.nombre) && !normalizarTexto(p.nombre)) errores.push('nombre inválido')
+  if (esTextoNoVacio(p.apellido) && !normalizarTexto(p.apellido)) errores.push('apellido inválido')
+  if (esTextoNoVacio(p.domicilio) && !normalizarTexto(p.domicilio))
+    errores.push('domicilio inválido')
+  return errores
+}
+
+const validarMesAnio = ({ mes, anio }) => {
+  const m = Number(mes)
+  const a = Number(anio)
+  if (!Number.isInteger(m) || m < 1 || m > 12) throw new Error(`Mes inválido: ${mes}`)
+  if (!Number.isInteger(a) || a < 1900 || a > 2100) throw new Error(`Año inválido: ${anio}`)
+  return { mes: m, anio: a }
+}
+
+const FECHA_REGEX = /^\d{2}\/\d{2}\/\d{4}$/
+
+// ===== Fin helpers =====
+
 // Función para obtener el último ID de compra
 const obtenerUltimoId = () => {
   const row = db.prepare('SELECT MAX(id) as lastId FROM Compra').get()
@@ -84,6 +141,10 @@ export const ultimoIdCompra = async () => {
 
 // Función para insertar o actualizar un proveedor
 const insertarProveedor = (nombre, apellido, dni, domicilio) => {
+  const dniNormalizado = normalizarDni(dni)
+  const nombreNorm = normalizarTexto(nombre)
+  const apellidoNorm = normalizarTexto(apellido)
+  const domicilioNorm = normalizarTexto(domicilio)
   const insertProveedor = db.prepare(`
     INSERT INTO Proveedor (nombre, apellido, dni, domicilio)
     VALUES (?, ?, ?, ?)
@@ -92,13 +153,17 @@ const insertarProveedor = (nombre, apellido, dni, domicilio) => {
       apellido = excluded.apellido,
       domicilio = excluded.domicilio
   `)
-  insertProveedor.run(nombre, apellido, dni, domicilio)
+  insertProveedor.run(nombreNorm, apellidoNorm, dniNormalizado, domicilioNorm)
 
-  return db.prepare('SELECT id FROM Proveedor WHERE dni = ?').get(dni).id
+  return db.prepare('SELECT id FROM Proveedor WHERE dni = ?').get(dniNormalizado).id
 }
 
 export const introProveedor = async (_, proveedor) => {
   try {
+    const errores = validarDatosProveedor(proveedor)
+    if (errores.length > 0) {
+      throw new Error(`Datos de proveedor inválidos: ${errores.join(', ')}`)
+    }
     const proveedorId = insertarProveedor(
       proveedor.nombre,
       proveedor.apellido,
@@ -115,6 +180,12 @@ export const introProveedor = async (_, proveedor) => {
 // Función para actualizar un proveedor existente
 export const actualizarProveedor = async (_, proveedor) => {
   try {
+    if (!Number.isInteger(Number(proveedor.id))) {
+      throw new Error('ID de proveedor inválido')
+    }
+    if (!esTextoNoVacio(proveedor.nombre)) throw new Error('El nombre es obligatorio')
+    if (!esTextoNoVacio(proveedor.apellido)) throw new Error('El apellido es obligatorio')
+    if (!esTextoNoVacio(proveedor.domicilio)) throw new Error('El domicilio es obligatorio')
     const stmt = db.prepare(
       `UPDATE Proveedor SET
         nombre = ?,
@@ -122,7 +193,12 @@ export const actualizarProveedor = async (_, proveedor) => {
         domicilio = ?
       WHERE id = ?`
     )
-    stmt.run(proveedor.nombre, proveedor.apellido, proveedor.domicilio, proveedor.id)
+    stmt.run(
+      normalizarTexto(proveedor.nombre),
+      normalizarTexto(proveedor.apellido),
+      normalizarTexto(proveedor.domicilio),
+      proveedor.id
+    )
     return { success: true }
   } catch (error) {
     console.error('Error al actualizar proveedor:', error)
@@ -169,11 +245,49 @@ const insertarReciboConDetalles = (proveedorId, fecha, items, totalGeneral) => {
 
 export const introRecibo = async (_, recibo) => {
   try {
+    const proveedorId = Number(recibo.proveedorId)
+    if (!Number.isInteger(proveedorId)) {
+      throw new Error('ID de proveedor inválido')
+    }
+    if (typeof recibo.fecha !== 'string' || !FECHA_REGEX.test(recibo.fecha.trim())) {
+      throw new Error(`Fecha inválida "${recibo.fecha}". Se espera DD/MM/AAAA.`)
+    }
+    if (!Array.isArray(recibo.items) || recibo.items.length === 0) {
+      throw new Error('El recibo debe tener al menos un artículo')
+    }
+
+    // El backend recalcula importe/IVA/total: no se confía en los montos del renderer.
+    // Redondeo a 2 decimales aquí para que la BD y los totales sean consistentes.
+    const items = recibo.items.map((item, idx) => {
+      const cantidad = Number(item.cantidad)
+      const precioUnitario = Number(item.precio_unitario)
+      const articuloId = Number(item.articulo_id)
+      if (!Number.isInteger(articuloId)) {
+        throw new Error(`Artículo inválido en la fila ${idx + 1}`)
+      }
+      if (!(cantidad > 0) || !(precioUnitario > 0)) {
+        throw new Error(`Cantidad y precio deben ser mayores a 0 en la fila ${idx + 1}`)
+      }
+      const importe = redondear2(cantidad * precioUnitario)
+      const iva = redondear2(importe * 0.21)
+      const total = redondear2(importe + iva)
+      return {
+        articulo_id: articuloId,
+        cantidad,
+        precio_unitario: precioUnitario,
+        importe,
+        iva,
+        total
+      }
+    })
+
+    const totalGeneral = redondear2(items.reduce((sum, i) => sum + i.total, 0))
+
     const reciboId = insertarReciboConDetalles(
-      Number(recibo.proveedorId),
-      recibo.fecha,
-      recibo.items,
-      parseFloat(recibo.totalGeneral)
+      proveedorId,
+      recibo.fecha.trim(),
+      items,
+      totalGeneral
     )
     return { id: reciboId }
   } catch (error) {
@@ -216,7 +330,10 @@ const obtenerTotalesDiarios = (fecha) => {
 
 export const totalDelDia = async (_, fecha) => {
   try {
-    return obtenerTotalesDiarios(fecha)
+    if (typeof fecha !== 'string' || !FECHA_REGEX.test(fecha.trim())) {
+      throw new Error(`Fecha inválida "${fecha}". Se espera DD/MM/AAAA.`)
+    }
+    return obtenerTotalesDiarios(fecha.trim())
   } catch (error) {
     console.error('Error al obtener el total del día:', error)
     throw error
@@ -224,8 +341,9 @@ export const totalDelDia = async (_, fecha) => {
 }
 
 // Función para obtener el informe de compras mensuales
-export const obtenerInformeComprasMensuales = async (_event, { mes, anio }) => {
+export const obtenerInformeComprasMensuales = async (_event, args) => {
   try {
+    const { mes, anio } = validarMesAnio(args)
     const mesFormateado = mes.toString().padStart(2, '0')
     const anioFormateado = anio.toString()
 
@@ -271,8 +389,9 @@ export const obtenerInformeComprasMensuales = async (_event, { mes, anio }) => {
   }
 }
 
-export const obtenerInformeContable = async (_event, { mes, anio }) => {
+export const obtenerInformeContable = async (_event, args) => {
   try {
+    const { mes, anio } = validarMesAnio(args)
     const mesFormateado = mes.toString().padStart(2, '0')
     const anioFormateado = anio.toString()
 
@@ -302,6 +421,13 @@ export const obtenerInformeContable = async (_event, { mes, anio }) => {
 
 export const obtenerComprasParaIVADigital = async (_event, { startDate, endDate }) => {
   try {
+    const FECHA_ISO = /^\d{4}-\d{2}-\d{2}$/
+    if (!FECHA_ISO.test(startDate) || !FECHA_ISO.test(endDate)) {
+      throw new Error('Rango de fechas inválido. Se espera formato AAAA-MM-DD.')
+    }
+    if (startDate > endDate) {
+      throw new Error('La fecha desde no puede ser mayor a la fecha hasta.')
+    }
     // La consulta une las compras con sus detalles y proveedores
     // y filtra por el rango de fechas.
     // Se convierte la fecha de la DB (DD/MM/YYYY) a un formato comparable (YYYY/MM/DD)
@@ -383,6 +509,40 @@ const validarFecha = (fechaStr) => {
   return { valid: true, formatted }
 }
 
+// Normaliza un número que puede venir con separador de miles (punto o coma).
+// Ejemplos: "2,571.00" → 2571, "2.571" → 2571, "2571,00" → 2571, "2638" → 2638
+const normalizarNumero = (valor) => {
+  if (valor === null || valor === undefined) return NaN
+  let s = String(valor).trim()
+  if (s === '') return NaN
+
+  const idxPunto = s.lastIndexOf('.')
+  const idxComa = s.lastIndexOf(',')
+
+  if (idxPunto !== -1 && idxComa !== -1) {
+    // Ambos presentes: el separador decimal es el que tiene menos dígitos después (1 o 2)
+    const digitosDespuesPunto = s.length - idxPunto - 1
+    const digitosDespuesComa = s.length - idxComa - 1
+    if (digitosDespuesComa <= digitosDespuesPunto) {
+      // Coma es decimal: quitar puntos (miles), cambiar coma por punto
+      s = s.replace(/\./g, '').replace(',', '.')
+    } else {
+      // Punto es decimal: quitar comas (miles)
+      s = s.replace(/,/g, '')
+    }
+  } else if (idxComa !== -1) {
+    const digitosDespuesComa = s.length - idxComa - 1
+    if (digitosDespuesComa === 2) {
+      s = s.replace(',', '.')
+    } else {
+      s = s.replace(/,/g, '')
+    }
+  }
+  // Si solo tiene punto, se asume punto decimal y se deja igual
+
+  return parseFloat(s)
+}
+
 export const importarComprasMasivas = async (_, rows) => {
   if (rows.length === 0) {
     return { success: false, message: 'El archivo Excel está vacío.' }
@@ -456,7 +616,7 @@ export const importarComprasMasivas = async (_, rows) => {
     }
 
     // Validar cantidad
-    const cantidad = parseFloat(row.cantidad)
+    const cantidad = normalizarNumero(row.cantidad)
     if (isNaN(cantidad) || cantidad <= 0) {
       errores.push(
         `Fila ${fila}: Cantidad inválida "${row.cantidad}". Debe ser un número mayor a 0.`
@@ -464,7 +624,7 @@ export const importarComprasMasivas = async (_, rows) => {
     }
 
     // Validar precio unitario
-    const precio = parseFloat(row.precio_unitario)
+    const precio = normalizarNumero(row.precio_unitario)
     if (isNaN(precio) || precio <= 0) {
       errores.push(
         `Fila ${fila}: Precio unitario inválido "${row.precio_unitario}". Debe ser un número mayor a 0.`
@@ -487,8 +647,9 @@ export const importarComprasMasivas = async (_, rows) => {
   // ======= FIN FASE DE VALIDACIÓN =======
 
   const transaction = db.transaction((data) => {
-    // 1. Agrupamos por DNI + Fecha para generar un solo recibo por transacción real
-    const agrupadas = data.reduce((acc, row) => {
+    let insertados = 0
+
+    for (const row of data) {
       // Normalizar las claves de la fila a minúsculas
       const normalizedRow = {}
       for (const key in row) {
@@ -500,51 +661,38 @@ export const importarComprasMasivas = async (_, rows) => {
       const fechaResult = validarFecha(normalizedRow.fecha)
       const fecha = fechaResult.formatted
 
-      const key = `${dni}-${fecha}`
-      if (!acc[key]) {
-        acc[key] = {
-          prov: {
-            nombre: normalizedRow.nombre,
-            apellido: normalizedRow.apellido,
-            dni,
-            domicilio: normalizedRow.domicilio
-          },
-          fecha: fecha,
-          items: []
-        }
-      }
-
       const nombreArt = normalizeString(normalizedRow.articulo)
       const articulo_id = articuloMap.get(nombreArt)
 
-      const cantidad = parseFloat(normalizedRow.cantidad)
-      const precioU = parseFloat(normalizedRow.precio_unitario)
+      const cantidad = normalizarNumero(normalizedRow.cantidad)
+      const precioU = normalizarNumero(normalizedRow.precio_unitario)
       const importe = cantidad * precioU
       const iva = importe * 0.21
-      acc[key].items.push({
-        articulo_id,
-        cantidad,
-        precio_unitario: precioU,
-        importe,
-        iva,
-        total: importe + iva
-      })
 
-      return acc
-    }, {})
+      // Un recibo por fila: cada fila genera su propio comprobante con un solo item
+      const items = [
+        {
+          articulo_id,
+          cantidad,
+          precio_unitario: precioU,
+          importe,
+          iva,
+          total: importe + iva
+        }
+      ]
 
-    // 2. Insertamos cada grupo en la base de datos
+      const provId = insertarProveedor(
+        normalizedRow.nombre,
+        normalizedRow.apellido,
+        dni,
+        normalizedRow.domicilio
+      )
 
-    let insertados = 0
-    for (const key in agrupadas) {
-      const c = agrupadas[key]
-      if (c.items.length === 0) continue
-
-      const provId = insertarProveedor(c.prov.nombre, c.prov.apellido, c.prov.dni, c.prov.domicilio)
-      const totalGral = c.items.reduce((sum, i) => sum + i.total, 0)
-      insertarReciboConDetalles(provId, c.fecha, c.items, totalGral)
+      const totalGral = items.reduce((sum, i) => sum + i.total, 0)
+      insertarReciboConDetalles(provId, fecha, items, totalGral)
       insertados++
     }
+
     return insertados
   })
 
@@ -560,7 +708,13 @@ export const importarComprasMasivas = async (_, rows) => {
 // Obtener detalles de una compra específica por ID para regenerar el PDF
 export const obtenerDetalleCompra = async (_event, { compraId }) => {
   try {
-    const compra = db.prepare(`
+    const id = Number(compraId)
+    if (!Number.isInteger(id) || id <= 0) {
+      throw new Error(`ID de compra inválido: ${compraId}`)
+    }
+    const compra = db
+      .prepare(
+        `
       SELECT 
         C.id AS id,
         C.fecha,
@@ -573,13 +727,17 @@ export const obtenerDetalleCompra = async (_event, { compraId }) => {
       FROM Compra C
       JOIN Proveedor P ON C.proveedor_id = P.id
       WHERE C.id = ?
-    `).get(compraId)
+    `
+      )
+      .get(id)
 
     if (!compra) {
       throw new Error(`No se encontró la compra con ID: ${compraId}`)
     }
 
-    const items = db.prepare(`
+    const items = db
+      .prepare(
+        `
       SELECT 
         CD.articulo_id,
         CD.cantidad,
@@ -589,7 +747,9 @@ export const obtenerDetalleCompra = async (_event, { compraId }) => {
         CD.total
       FROM CompraDetalle CD
       WHERE CD.compra_id = ?
-    `).all(compraId)
+    `
+      )
+      .all(id)
 
     // Calculamos subtotal e IVA generals
     const subtotalGeneral = items.reduce((sum, item) => sum + item.importe, 0)
@@ -641,4 +801,3 @@ export const generarArchivoBienesUsados = async (_event, { mes, anio }) => {
 }
 
 export default db
-

@@ -50,6 +50,13 @@
   cursor: pointer;
 }
 
+/* Las opciones del desplegable nativo heredan el color del select;
+   sin fondo oscuro propio quedan blanco sobre blanco */
+.form-group select option {
+  background: #0f2027;
+  color: #ffffff;
+}
+
 .form-group input:focus,
 .form-group select:focus {
   outline: none;

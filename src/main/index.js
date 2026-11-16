@@ -22,6 +22,9 @@ import {
 
 let mainWindow = null
 
+// NOTA DE SEGURIDAD: sandbox:false es necesario porque el preload usa ESM (import).
+// Migrar el preload a CommonJS permitiría sandbox:true. Pendiente como mejora futura.
+// La superficie IPC está restringida por la whitelist de src/preload/index.js.
 function createWindow() {
   // crea la ventana principal.
   mainWindow = new BrowserWindow({
@@ -29,6 +32,9 @@ function createWindow() {
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
+      // NOTA: sandbox:false es necesario porque el preload usa ESM (import).
+      // Migrar el preload a CJS permitiría sandbox:true. La seguridad del
+      // renderer ya está cubierta por la whitelist de canales en preload/index.js.
       sandbox: false
     }
   })
@@ -290,28 +296,6 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  // --- LÓGICA DE AUTO-ACTUALIZACIÓN ---
-  // Esta línea es la más importante. Busca actualizaciones al iniciar la app
-  // y si encuentra una, la descarga y notifica al usuario cuando está lista.
-  autoUpdater.checkForUpdatesAndNotify()
-
-  // Opcional: Escucha eventos para mostrar mensajes personalizados en tu UI de React.
-  autoUpdater.on('update-available', () => {
-    // Puedes enviar un mensaje a tu ventana principal si quieres mostrar algo.
-    // Ejemplo: mainWindow.webContents.send('update_available');
-    console.log('Actualización disponible y se está descargando.')
-  })
-
-  autoUpdater.on('update-downloaded', () => {
-    // Cuando la actualización está lista, puedes notificar al usuario para que reinicie.
-    const mainWindow = BrowserWindow.getAllWindows()[0]
-    if (mainWindow) {
-      mainWindow.webContents.send('update_downloaded')
-    }
-    console.log('Actualización descargada y lista para instalar.')
-  })
-  // --- FIN DE LA LÓGICA DE AUTO-ACTUALIZACIÓN ---
-
   ipcMain.on('ping', () => console.log('pong'))
 
   // Obtener el último ID de compra
@@ -376,6 +360,28 @@ app.whenReady().then(() => {
   })
 
   createWindow()
+
+  // --- LÓGICA DE AUTO-ACTUALIZACIÓN ---
+  // Esta línea es la más importante. Busca actualizaciones al iniciar la app
+  // y si encuentra una, la descarga y notifica al usuario cuando está lista.
+  autoUpdater.checkForUpdatesAndNotify()
+
+  // Opcional: Escucha eventos para mostrar mensajes personalizados en tu UI de React.
+  autoUpdater.on('update-available', () => {
+    // Puedes enviar un mensaje a tu ventana principal si quieres mostrar algo.
+    // Ejemplo: mainWindow.webContents.send('update_available');
+    console.log('Actualización disponible y se está descargando.')
+  })
+
+  autoUpdater.on('update-downloaded', () => {
+    // Cuando la actualización está lista, puedes notificar al usuario para que reinicie.
+    const mainWindow = BrowserWindow.getAllWindows()[0]
+    if (mainWindow) {
+      mainWindow.webContents.send('update_downloaded')
+    }
+    console.log('Actualización descargada y lista para instalar.')
+  })
+  // --- FIN DE LA LÓGICA DE AUTO-ACTUALIZACIÓN ---
 
   app.on('activate', function () {
     // En macOS es común volver a crear una ventana en la aplicación cuando se hace clic en el

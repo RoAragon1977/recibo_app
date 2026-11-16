@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import SearchableSelect from '../SearchableSelect'
 import './formModProv.css'
 
 const FormModProv = () => {
@@ -28,10 +29,10 @@ const FormModProv = () => {
   }, [])
 
   // Cuando se selecciona un proveedor, rellenar el formulario
-  const handleSelectProveedor = (e) => {
-    const provId = e.target.value
+  const handleSelectProveedor = (provId) => {
     if (provId) {
       const prov = proveedores.find((p) => p.id === parseInt(provId))
+      if (!prov) return
       setProveedorSeleccionado(prov)
       setFormData({
         id: prov.id,
@@ -80,14 +81,16 @@ const FormModProv = () => {
       <form onSubmit={handleGuardar}>
         <div className="form-group">
           <label>Seleccione un Proveedor:</label>
-          <select onChange={handleSelectProveedor} defaultValue="">
-            <option value="">-- Seleccionar --</option>
-            {proveedores.map((prov) => (
-              <option key={prov.id} value={prov.id}>
-                {prov.apellido}, {prov.nombre} ({prov.dni})
-              </option>
-            ))}
-          </select>
+          <SearchableSelect
+            placeholder="Escriba para buscar proveedor..."
+            options={proveedores.map((prov) => ({
+              id: prov.id,
+              label: `${prov.apellido}, ${prov.nombre}`,
+              info: prov.dni
+            }))}
+            value={proveedorSeleccionado ? proveedorSeleccionado.id : ''}
+            onChange={handleSelectProveedor}
+          />
         </div>
 
         {proveedorSeleccionado && (

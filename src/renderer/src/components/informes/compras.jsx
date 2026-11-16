@@ -266,4 +266,3 @@ const ComprasMensuales = () => {
   )
 }
 export default ComprasMensuales
-

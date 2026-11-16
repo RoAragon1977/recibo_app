@@ -136,7 +136,10 @@ const InformeBienesUsados = () => {
       <div className="informe-display">
         <h3>Registros de Compras del Período</h3>
         {datosInforme.length === 0 ? (
-          <p>No se encontraron recibos. Seleccione período y presione &quot;Buscar Comprobantes&quot;.</p>
+          <p>
+            No se encontraron recibos. Seleccione período y presione &quot;Buscar
+            Comprobantes&quot;.
+          </p>
         ) : (
           <table>
             <thead>
